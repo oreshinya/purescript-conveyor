@@ -4,6 +4,8 @@
 
 Simple RPC framework.
 
+See [example](https://github.com/oreshinya/purescript-conveyor/blob/master/example/Main.purs).
+
 ## Installation
 
 ```
