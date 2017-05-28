@@ -223,14 +223,15 @@ messageify msg ="{ \"message\": \"" <> msg <> "\" }"
 
 
 parseBody :: forall e a. Decode a => Context -> ExceptT Failure (Eff e) a
-parseBody (Context { body: Nothing }) = throwError parsingFailure
+parseBody (Context { body: Nothing }) = throwError noBodyFailure
 parseBody (Context { req, body: Just body' }) =
   case SM.lookup "content-type" (requestHeaders req) >>= parseMediaType of
     Just mediaType | mediaType == applicationJSON ->
       case (runExcept $ decodeJSON body') of
-        Left _ -> throwError parsingFailure
+        Left _ -> throwError entityFailure
         Right b -> pure b
-    _ -> throwError parsingFailure
+    _ -> throwError mediaTypeFailure
+
 
 
 parseMediaType :: String -> Maybe MediaType
@@ -238,11 +239,29 @@ parseMediaType = split (Pattern ";") >>> head >>> map MediaType
 
 
 
-parsingFailure :: Failure
-parsingFailure =
+noBodyFailure :: Failure
+noBodyFailure =
   Failure
-    { status: 500
-    , message: "Receive invalid body."
+    { status: 400
+    , message: "Need request body."
+    }
+
+
+
+entityFailure :: Failure
+entityFailure =
+  Failure
+    { status: 422
+    , message: "Received invalid body."
+    }
+
+
+
+mediaTypeFailure :: Failure
+mediaTypeFailure =
+  Failure
+    { status: 400
+    , message: "Received unpermitted Content-Type."
     }
 
 
