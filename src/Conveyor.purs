@@ -2,6 +2,7 @@ module Conveyor
   ( Config(..)
   , Context(..)
   , Result(..)
+  , Success(..)
   , Failure(..)
   , Handler(..)
   , Router(..)
@@ -23,7 +24,7 @@ import Data.Array (head)
 import Data.Either (Either(..))
 import Data.Foreign.Class (class Encode, class Decode)
 import Data.Foreign.Generic (encodeJSON, decodeJSON)
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.MediaType (MediaType(..))
 import Data.MediaType.Common (applicationJSON)
 import Data.String (Pattern(..), split)
@@ -55,6 +56,12 @@ newtype Result r
     , body :: Maybe r
     }
 
+newtype Success
+  = Success
+    { status :: Int
+    , body :: Maybe String
+    }
+
 newtype Failure
   = Failure
     { status :: Int
@@ -70,7 +77,7 @@ newtype Router c e r
 newtype App c e r
   = App
     { router :: Router c e r
-    , exec :: Context -> Handler c e r -> ExceptT Failure (Eff e) (Result r)
+    , exec :: Context -> Handler c e r -> ExceptT Failure (Eff e) Success
     }
 
 
@@ -114,7 +121,7 @@ serve app req res =
         response <- runApp (Context { req, res, body }) app
         case response of
           Left (Failure f) -> responsify res f.status $ messageify f.message
-          Right (Result r) -> responsify res r.status $ maybe "" encodeJSON r.body
+          Right (Success s) -> responsify res s.status $ fromMaybe "" s.body
 
    in do
      ref <- newRef Nothing
@@ -129,7 +136,7 @@ runApp :: forall c e r.
           Encode r =>
           Context ->
           App c e r ->
-          Eff e (Either Failure (Result r))
+          Eff e (Either Failure Success)
 runApp ctx (App app) = runExceptT do
   validateHttpMethod ctx
   handler <- runRouter ctx app.router
@@ -169,8 +176,10 @@ runHandler :: forall c e r.
               Encode r =>
               c ->
               Handler c e r ->
-              ExceptT Failure (Eff e) (Result r)
-runHandler c (Handler f) = f c
+              ExceptT Failure (Eff e) Success
+runHandler c (Handler f) = do
+  (Result r) <- f c
+  pure $ Success { status: r.status, body: map encodeJSON r.body }
 
 
 
