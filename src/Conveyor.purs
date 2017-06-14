@@ -2,7 +2,7 @@ module Conveyor
   ( Config(..)
   , Context(..)
   , Result(..)
-  , Failure(..)
+  , Break(..)
   , Handler(..)
   , Router(..)
   , App(..)
@@ -55,14 +55,14 @@ newtype Result r
     , body :: Maybe r
     }
 
-newtype Failure
-  = Failure
+newtype Break
+  = Break
     { status :: Int
     , message :: String
     }
 
 newtype Handler c e r
-  = Handler (c -> ExceptT Failure (Eff e) (Result r))
+  = Handler (c -> ExceptT Break (Eff e) (Result r))
 
 newtype Router c e r
   = Router (Array (Tuple String (Handler c e r)))
@@ -70,7 +70,7 @@ newtype Router c e r
 newtype App c e r
   = App
     { router :: Router c e r
-    , exec :: Context -> Handler c e r -> ExceptT Failure (Eff e) (Result r)
+    , exec :: Context -> Handler c e r -> ExceptT Break (Eff e) (Result r)
     }
 
 
@@ -113,7 +113,7 @@ serve app req res =
         body <- readRef ref
         response <- runApp (Context { req, res, body }) app
         case response of
-          Left (Failure f) -> responsify res f.status $ messageify f.message
+          Left (Break f) -> responsify res f.status $ messageify f.message
           Right (Result r) -> responsify res r.status $ maybe "" encodeJSON r.body
 
    in do
@@ -129,7 +129,7 @@ runApp :: forall c e r.
           Encode r =>
           Context ->
           App c e r ->
-          Eff e (Either Failure (Result r))
+          Eff e (Either Break (Result r))
 runApp ctx (App app) = runExceptT do
   validateHttpMethod ctx
   handler <- runRouter ctx app.router
@@ -139,11 +139,11 @@ runApp ctx (App app) = runExceptT do
 
 validateHttpMethod :: forall e.
                       Context ->
-                      ExceptT Failure (Eff e) Unit
+                      ExceptT Break (Eff e) Unit
 validateHttpMethod (Context { req }) =
   case (requestMethod req) of
     "POST" -> pure unit
-    _ -> throwError $ Failure
+    _ -> throwError $ Break
       { status: 405
       , message: "You can use POST only."
       }
@@ -154,11 +154,11 @@ runRouter :: forall c e r.
              Encode r =>
              Context ->
              Router c e r ->
-             ExceptT Failure (Eff e) (Handler c e r)
+             ExceptT Break (Eff e) (Handler c e r)
 runRouter (Context { req }) (Router r) =
   case (T.lookup (requestURL req) r) of
     Just handler -> pure handler
-    Nothing -> throwError $ Failure
+    Nothing -> throwError $ Break
       { status: 404
       , message: "The path is unknown."
       }
@@ -169,7 +169,7 @@ runHandler :: forall c e r.
               Encode r =>
               c ->
               Handler c e r ->
-              ExceptT Failure (Eff e) (Result r)
+              ExceptT Break (Eff e) (Result r)
 runHandler c (Handler f) = f c
 
 
@@ -194,15 +194,15 @@ messageify msg ="{ \"message\": \"" <> msg <> "\" }"
 
 
 
-parseBody :: forall e a. Decode a => Context -> ExceptT Failure (Eff e) a
-parseBody (Context { body: Nothing }) = throwError noBodyFailure
+parseBody :: forall e a. Decode a => Context -> ExceptT Break (Eff e) a
+parseBody (Context { body: Nothing }) = throwError noBodyBreak
 parseBody (Context { req, body: Just body' }) =
   case SM.lookup "content-type" (requestHeaders req) >>= parseMediaType of
     Just mediaType | mediaType == applicationJSON ->
       case (runExcept $ decodeJSON body') of
-        Left _ -> throwError entityFailure
+        Left _ -> throwError entityBreak
         Right b -> pure b
-    _ -> throwError mediaTypeFailure
+    _ -> throwError mediaTypeBreak
 
 
 
@@ -211,27 +211,27 @@ parseMediaType = split (Pattern ";") >>> head >>> map MediaType
 
 
 
-noBodyFailure :: Failure
-noBodyFailure =
-  Failure
+noBodyBreak :: Break
+noBodyBreak =
+  Break
     { status: 400
     , message: "Need request body."
     }
 
 
 
-entityFailure :: Failure
-entityFailure =
-  Failure
+entityBreak :: Break
+entityBreak =
+  Break
     { status: 422
     , message: "Received invalid body."
     }
 
 
 
-mediaTypeFailure :: Failure
-mediaTypeFailure =
-  Failure
+mediaTypeBreak :: Break
+mediaTypeBreak =
+  Break
     { status: 400
     , message: "Received unpermitted Content-Type."
     }
@@ -241,7 +241,7 @@ mediaTypeFailure =
 handle :: forall c e r.
           Encode r =>
           String ->
-          (c -> ExceptT Failure (Eff e) (Result r)) ->
+          (c -> ExceptT Break (Eff e) (Result r)) ->
           Tuple String (Handler c e r)
 handle path proc = Tuple path $ Handler proc
 

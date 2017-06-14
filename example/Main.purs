@@ -13,7 +13,7 @@ import Data.Int (fromString)
 import Node.HTTP (HTTP)
 import Node.Process (PROCESS, lookupEnv)
 import Data.Generic.Rep (class Generic)
-import Conveyor (Config(..), Context, Failure(..), Result(..), Router(..), App, (:>), run, defaultApp, parseBody)
+import Conveyor (Config(..), Context, Break(..), Result(..), Router(..), App, (:>), run, defaultApp, parseBody)
 
 
 
@@ -69,15 +69,15 @@ getConfig = do
 
 
 
-handleError :: forall e. Context -> ExceptT Failure (Eff e) (Result MyJson)
+handleError :: forall e. Context -> ExceptT Break (Eff e) (Result MyJson)
 handleError ctx = do
-  void $ throwError $ Failure { status: 500, message: "Failed request." }
+  void $ throwError $ Break { status: 500, message: "Failed request." }
   (Comment comment) <- parseBody ctx
   pure $ Result { status: 200, body: Just (MyJson { fuck: comment.content }) }
 
 
 
-createBlog :: forall e. Context -> ExceptT Failure (Eff e) (Result MyJson)
+createBlog :: forall e. Context -> ExceptT Break (Eff e) (Result MyJson)
 createBlog ctx = do
   (Blog blog) <- parseBody ctx
   pure $ Result
