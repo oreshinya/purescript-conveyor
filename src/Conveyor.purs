@@ -5,14 +5,12 @@ module Conveyor
   , Failure(..)
   , Handler(..)
   , Router(..)
-  , Before(..)
-  , After(..)
   , App(..)
-  , run
-  , parseBody
-  , handle
-  , (:>)
   , defaultApp
+  , handle, (:>)
+  , run
+  , runHandler
+  , parseBody
   ) where
 
 import Prelude
@@ -69,17 +67,10 @@ newtype Handler c e r
 newtype Router c e r
   = Router (Array (Tuple String (Handler c e r)))
 
-newtype Before e c
-  = Before (Context -> ExceptT Failure (Eff e) c)
-
-newtype After e r
-  = After (Result r -> ExceptT Failure (Eff e) (Result r))
-
 newtype App c e r
   = App
-    { before :: Before e c
-    , router :: Router c e r
-    , after :: After e r
+    { router :: Router c e r
+    , exec :: Context -> Handler c e r -> ExceptT Failure (Eff e) (Result r)
     }
 
 
@@ -142,9 +133,7 @@ runApp :: forall c e r.
 runApp ctx (App app) = runExceptT do
   validateHttpMethod ctx
   handler <- runRouter ctx app.router
-  c <- runBefore ctx app.before
-  r <- runHandler c handler
-  runAfter r app.after
+  app.exec ctx handler
 
 
 
@@ -182,23 +171,6 @@ runHandler :: forall c e r.
               Handler c e r ->
               ExceptT Failure (Eff e) (Result r)
 runHandler c (Handler f) = f c
-
-
-
-runBefore :: forall e c.
-             Context ->
-             Before e c ->
-             ExceptT Failure (Eff e) c
-runBefore ctx (Before f) = f ctx
-
-
-
-runAfter :: forall e r.
-            Encode r =>
-            Result r ->
-            After e r ->
-            ExceptT Failure (Eff e) (Result r)
-runAfter r (After f) = f r
 
 
 
@@ -277,20 +249,9 @@ infix 4 handle as :>
 
 
 
-defaultBefore :: forall e. Before e Context
-defaultBefore = Before $ \ctx -> pure ctx
-
-
-
-defaultAfter :: forall e r. Encode r => After e r
-defaultAfter = After $ \result -> pure result
-
-
-
 defaultApp :: forall e r. Encode r => Router Context e r -> App Context e r
 defaultApp router =
   App
-    { before: defaultBefore
-    , router
-    , after: defaultAfter
+    { router
+    , exec: runHandler
     }
