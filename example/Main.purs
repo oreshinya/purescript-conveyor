@@ -71,7 +71,7 @@ getConfig = do
 
 handleError :: forall e. Context -> ExceptT Break (Eff e) (Result MyJson)
 handleError ctx = do
-  void $ throwError $ Break { status: 500, message: "Failed request." }
+  void $ throwError $ Break { status: 500, message: Just "Failed request." }
   (Comment comment) <- parseBody ctx
   pure $ Result { status: 200, body: Just (MyJson { fuck: comment.content }) }
 

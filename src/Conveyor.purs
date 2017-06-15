@@ -58,7 +58,7 @@ newtype Result r
 newtype Break
   = Break
     { status :: Int
-    , message :: String
+    , message :: Maybe String
     }
 
 newtype Handler c e r
@@ -113,7 +113,7 @@ serve app req res =
         body <- readRef ref
         response <- runApp (Context { req, res, body }) app
         case response of
-          Left (Break b) -> responsify res b.status $ messageify b.message
+          Left (Break b) -> responsify res b.status $ maybe "" messageify b.message
           Right (Result r) -> responsify res r.status $ maybe "" encodeJSON r.body
 
    in do
@@ -145,7 +145,7 @@ validateHttpMethod (Context { req }) =
     "POST" -> pure unit
     _ -> throwError $ Break
       { status: 405
-      , message: "You can use POST only."
+      , message: Just "You can use POST only."
       }
 
 
@@ -160,7 +160,7 @@ runRouter (Context { req }) (Router r) =
     Just handler -> pure handler
     Nothing -> throwError $ Break
       { status: 404
-      , message: "The path is unknown."
+      , message: Just "The path is unknown."
       }
 
 
@@ -215,7 +215,7 @@ noBodyError :: Break
 noBodyError =
   Break
     { status: 400
-    , message: "Need request body."
+    , message: Just "Need request body."
     }
 
 
@@ -224,7 +224,7 @@ entityError :: Break
 entityError =
   Break
     { status: 422
-    , message: "Received invalid body."
+    , message: Just "Received invalid body."
     }
 
 
@@ -233,7 +233,7 @@ mediaTypeError :: Break
 mediaTypeError =
   Break
     { status: 400
-    , message: "Received unpermitted Content-Type."
+    , message: Just "Received unpermitted Content-Type."
     }
 
 
