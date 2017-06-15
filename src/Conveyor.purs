@@ -113,7 +113,7 @@ serve app req res =
         body <- readRef ref
         response <- runApp (Context { req, res, body }) app
         case response of
-          Left (Break f) -> responsify res f.status $ messageify f.message
+          Left (Break b) -> responsify res b.status $ messageify b.message
           Right (Result r) -> responsify res r.status $ maybe "" encodeJSON r.body
 
    in do
@@ -195,14 +195,14 @@ messageify msg ="{ \"message\": \"" <> msg <> "\" }"
 
 
 parseBody :: forall e a. Decode a => Context -> ExceptT Break (Eff e) a
-parseBody (Context { body: Nothing }) = throwError noBodyBreak
+parseBody (Context { body: Nothing }) = throwError noBodyError
 parseBody (Context { req, body: Just body' }) =
   case SM.lookup "content-type" (requestHeaders req) >>= parseMediaType of
     Just mediaType | mediaType == applicationJSON ->
       case (runExcept $ decodeJSON body') of
-        Left _ -> throwError entityBreak
+        Left _ -> throwError entityError
         Right b -> pure b
-    _ -> throwError mediaTypeBreak
+    _ -> throwError mediaTypeError
 
 
 
@@ -211,8 +211,8 @@ parseMediaType = split (Pattern ";") >>> head >>> map MediaType
 
 
 
-noBodyBreak :: Break
-noBodyBreak =
+noBodyError :: Break
+noBodyError =
   Break
     { status: 400
     , message: "Need request body."
@@ -220,8 +220,8 @@ noBodyBreak =
 
 
 
-entityBreak :: Break
-entityBreak =
+entityError :: Break
+entityError =
   Break
     { status: 422
     , message: "Received invalid body."
@@ -229,8 +229,8 @@ entityBreak =
 
 
 
-mediaTypeBreak :: Break
-mediaTypeBreak =
+mediaTypeError :: Break
+mediaTypeError =
   Break
     { status: 400
     , message: "Received unpermitted Content-Type."
