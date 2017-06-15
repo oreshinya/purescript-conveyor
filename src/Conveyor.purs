@@ -9,7 +9,6 @@ module Conveyor
   , defaultApp
   , handle, (:>)
   , run
-  , runHandler
   , parseBody
   ) where
 
@@ -70,7 +69,7 @@ newtype Router c e r
 newtype App c e r
   = App
     { router :: Router c e r
-    , exec :: Context -> Handler c e r -> ExceptT Break (Eff e) (Result r)
+    , respond :: Context -> (c -> ExceptT Break (Eff e) (Result r)) -> ExceptT Break (Eff e) (Result r)
     }
 
 
@@ -130,10 +129,10 @@ runApp :: forall c e r.
           Context ->
           App c e r ->
           Eff e (Either Break (Result r))
-runApp ctx (App app) = runExceptT do
+runApp ctx (App app) = runExceptT $ app.respond ctx \c -> do
   validateHttpMethod ctx
   handler <- runRouter ctx app.router
-  app.exec ctx handler
+  runHandler c handler
 
 
 
@@ -249,9 +248,18 @@ infix 4 handle as :>
 
 
 
+defaultRespond :: forall e r.
+                  Encode r =>
+                  Context ->
+                  (Context -> ExceptT Break (Eff e) (Result r)) ->
+                  ExceptT Break (Eff e) (Result r)
+defaultRespond ctx exec = exec ctx
+
+
+
 defaultApp :: forall e r. Encode r => Router Context e r -> App Context e r
 defaultApp router =
   App
     { router
-    , exec: runHandler
+    , respond: defaultRespond
     }
