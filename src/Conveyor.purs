@@ -8,6 +8,7 @@ module Conveyor
   , App(..)
   , defaultApp
   , handle, (:>)
+  , namespace, (</>)
   , run
   , parseBody
   ) where
@@ -19,6 +20,7 @@ import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Eff.Ref (REF, newRef, readRef, writeRef)
 import Control.Monad.Except (ExceptT, runExceptT, runExcept, throwError)
 import Data.Array (head)
+import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
 import Data.Foreign.Class (class Encode, class Decode)
 import Data.Foreign.Generic (encodeJSON, decodeJSON)
@@ -245,6 +247,17 @@ handle :: forall c e r.
 handle path proc = Tuple path $ Handler proc
 
 infix 4 handle as :>
+
+
+
+namespace :: forall c e r.
+             Encode r =>
+             String ->
+             Array (Tuple String (Handler c e r)) ->
+             Array (Tuple String (Handler c e r))
+namespace ns ts = map (lmap $ append ns) ts
+
+infixr 6 namespace as </>
 
 
 
