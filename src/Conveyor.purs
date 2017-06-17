@@ -1,16 +1,19 @@
 module Conveyor
-  ( Config(..)
-  , Context(..)
-  , Result(..)
+  ( App
   , Break(..)
-  , Handler(..)
-  , Router(..)
-  , App(..)
+  , Config(..)
+  , Context(..)
+  , Handler
+  , Respond
+  , Result(..)
+  , Router
+  , app
   , defaultApp
   , handle, (:>)
   , namespace, (</>)
-  , run
   , parseBody
+  , route
+  , run
   ) where
 
 import Prelude
@@ -71,8 +74,11 @@ newtype Router c e r
 newtype App c e r
   = App
     { router :: Router c e r
-    , respond :: Context -> (c -> ExceptT Break (Eff e) (Result r)) -> ExceptT Break (Eff e) (Result r)
+    , respond :: Respond c e r
     }
+
+type Respond c e r
+  = Context -> (c -> ExceptT Break (Eff e) (Result r)) -> ExceptT Break (Eff e) (Result r)
 
 
 
@@ -81,8 +87,8 @@ run :: forall c e r.
        Config ->
        App c (console :: CONSOLE, exception :: EXCEPTION, http :: HTTP, ref :: REF | e) r ->
        Eff (console :: CONSOLE, exception :: EXCEPTION, http :: HTTP, ref :: REF | e) Unit
-run (Config c) app = do
-  server <- createServer $ serve app
+run (Config c) app' = do
+  server <- createServer $ serve app'
   listen server c $ logListening c.port
 
 
@@ -98,7 +104,7 @@ serve :: forall c e r.
          Request ->
          Response ->
          Eff (exception :: EXCEPTION, http :: HTTP, ref :: REF | e) Unit
-serve app req res =
+serve app' req res =
   let readable = requestAsStream req
 
       onDataString' ref chunk =
@@ -112,7 +118,7 @@ serve app req res =
 
       onEnd' ref = do
         body <- readRef ref
-        response <- runApp (Context { req, res, body }) app
+        response <- runApp (Context { req, res, body }) app'
         case response of
           Left (Break b) -> responsify res b.status $ maybe "" messageify b.message
           Right (Result r) -> responsify res r.status $ maybe "" encodeJSON r.body
@@ -131,9 +137,9 @@ runApp :: forall c e r.
           Context ->
           App c e r ->
           Eff e (Either Break (Result r))
-runApp ctx (App app) = runExceptT $ app.respond ctx \c -> do
+runApp ctx (App app') = runExceptT $ app'.respond ctx \c -> do
   validateHttpMethod ctx
-  handler <- runRouter ctx app.router
+  handler <- runRouter ctx app'.router
   runHandler c handler
 
 
@@ -261,6 +267,14 @@ infixr 6 namespace as </>
 
 
 
+route :: forall c e r.
+         Encode r =>
+         Array (Tuple String (Handler c e r)) ->
+         Router c e r
+route = Router
+
+
+
 defaultRespond :: forall e r.
                   Encode r =>
                   Context ->
@@ -271,8 +285,13 @@ defaultRespond ctx exec = exec ctx
 
 
 defaultApp :: forall e r. Encode r => Router Context e r -> App Context e r
-defaultApp router =
-  App
-    { router
-    , respond: defaultRespond
-    }
+defaultApp router = app router defaultRespond
+
+
+
+app :: forall c e r.
+       Encode r =>
+       Router c e r ->
+       Respond c e r ->
+       App c e r
+app router respond = App { router, respond }

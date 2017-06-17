@@ -13,7 +13,7 @@ import Data.Int (fromString)
 import Node.HTTP (HTTP)
 import Node.Process (PROCESS, lookupEnv)
 import Data.Generic.Rep (class Generic)
-import Conveyor (Config(..), Context, Break(..), Result(..), Router(..), App, (:>), (</>), run, defaultApp, parseBody)
+import Conveyor (Config(..), Context, Break(..), Result(..), Router, App, (:>), (</>), route, run, defaultApp, parseBody)
 
 
 
@@ -88,7 +88,7 @@ createBlog ctx = do
 
 
 router :: forall e. Router Context e MyJson
-router = Router $
+router = route $
   "/v1" </>
     [ "/handle_error" :> handleError
     , "/create_blog" :> createBlog
