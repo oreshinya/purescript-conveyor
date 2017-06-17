@@ -275,11 +275,7 @@ route = Router
 
 
 
-defaultRespond :: forall e r.
-                  Encode r =>
-                  Context ->
-                  (Context -> ExceptT Break (Eff e) (Result r)) ->
-                  ExceptT Break (Eff e) (Result r)
+defaultRespond :: forall e r. Encode r => Respond Context e r
 defaultRespond ctx exec = exec ctx
 
 
