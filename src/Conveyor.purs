@@ -18,7 +18,7 @@ module Conveyor
 
 import Prelude
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Console (CONSOLE, log)
+import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Eff.Ref (REF, newRef, readRef, writeRef)
 import Control.Monad.Except (ExceptT, runExceptT, runExcept, throwError)
@@ -36,6 +36,7 @@ import Data.Tuple as T
 import Data.Tuple (Tuple(..))
 import Node.Encoding (Encoding(UTF8))
 import Node.HTTP (HTTP, Request, Response, listen, createServer, requestAsStream, responseAsStream, setHeader, setStatusCode, requestURL, requestMethod, requestHeaders)
+import Node.Stdout (log)
 import Node.Stream (writeString, end, onDataString, onError, onEnd)
 
 
