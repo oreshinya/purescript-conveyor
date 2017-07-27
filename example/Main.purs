@@ -5,15 +5,16 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Eff.Ref (REF)
 import Control.Monad.Eff.Exception (EXCEPTION)
-import Control.Monad.Except (ExceptT, throwError)
 import Data.Foreign.Class (class Encode, class Decode)
 import Data.Foreign.Generic (defaultOptions, genericEncode, genericDecode)
 import Data.Maybe (Maybe(..))
 import Data.Int (fromString)
-import Node.HTTP (HTTP)
+import Node.HTTP (HTTP, ListenOptions)
 import Node.Process (PROCESS, lookupEnv)
 import Data.Generic.Rep (class Generic)
-import Conveyor (Config(..), Context, Break(..), Result(..), Router, App, (:>), (</>), route, run, defaultApp, parseBody)
+import Conveyor (run)
+import Conveyor.Handler (Handler)
+import Conveyor.Responsable (Result, result)
 
 
 
@@ -23,13 +24,6 @@ derive instance genericMyJson :: Generic MyJson _
 
 instance encodeMyJson :: Encode MyJson where
   encode = genericEncode $ defaultOptions { unwrapSingleConstructors = true }
-
-newtype Comment = Comment { content :: String }
-
-derive instance genericComment :: Generic Comment _
-
-instance decodeComment :: Decode Comment where
-  decode = genericDecode $ defaultOptions { unwrapSingleConstructors = true }
 
 newtype Blog = Blog { title :: String, content :: String }
 
@@ -59,55 +53,21 @@ getBacklog = pure Nothing
 
 
 
-getConfig :: forall e. Eff (process :: PROCESS | e) Config
+getConfig :: forall e. Eff (process :: PROCESS | e) ListenOptions
 getConfig = do
   hostname <- getHostname
   port <- getPort
   backlog <- getBacklog
-  pure $ Config { hostname, port, backlog }
+  pure { hostname, port, backlog }
 
 
 
-
-handleError :: forall e. Context -> ExceptT Break (Eff e) (Result MyJson)
-handleError ctx = do
-  void $ throwError $ Break { status: 500, message: Just "Failed request." }
-  (Comment comment) <- parseBody ctx
-  pure $ Result { status: 200, body: Just (MyJson { fuck: comment.content }) }
+createBlog :: forall e. Blog -> Handler e (Result MyJson)
+createBlog (Blog b) = pure $ result 200 $ Just $ MyJson { fuck: "title: " <> b.title <> ", content: " <> b.content <> " requested." }
 
 
 
-createBlog :: forall e. Context -> ExceptT Break (Eff e) (Result MyJson)
-createBlog ctx = do
-  (Blog blog) <- parseBody ctx
-  pure $ Result
-    { status: 200
-    , body: Just (MyJson { fuck: "title: " <> blog.title <> ", content: " <> blog.content <> " requested." })
-    }
-
-
-
-router :: forall e. Router Context e MyJson
-router = route $
-  "/v1" </>
-    [ "/handle_error" :> handleError
-    , "/create_blog" :> createBlog
-    ]
-  <>
-  "/v2" </>
-    [ "/handle_error" :> handleError
-    , "/create_blog" :> createBlog
-    ]
-
-
-
-
-app :: forall e. App Context e MyJson
-app = defaultApp router
-
-
-
-main :: forall e. Eff (process :: PROCESS, console :: CONSOLE, exception :: EXCEPTION, ref :: REF, http :: HTTP | e ) Unit
+main :: forall e. Eff (process :: PROCESS, console :: CONSOLE, exception :: EXCEPTION, ref :: REF, http :: HTTP | e) Unit
 main = do
   config <- getConfig
-  run config app
+  run config { createBlog }
