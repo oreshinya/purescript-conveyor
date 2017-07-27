@@ -2,7 +2,8 @@ module Main where
 
 import Prelude
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Console (CONSOLE)
+import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Console (CONSOLE, log)
 import Control.Monad.Eff.Ref (REF)
 import Control.Monad.Eff.Exception (EXCEPTION, error)
 import Control.Monad.Except (throwError)
@@ -70,8 +71,10 @@ getConfig = do
 
 
 
-errorTest :: forall e. Handler e (Result YourJson)
-errorTest = throwError $ error ""
+errorTest :: forall e. Handler (console :: CONSOLE | e) (Result YourJson)
+errorTest = do
+  liftEff $ log "foo"
+  throwError $ error ""
 
 
 
