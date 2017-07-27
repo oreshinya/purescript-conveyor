@@ -4,7 +4,8 @@ import Prelude
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Eff.Ref (REF)
-import Control.Monad.Eff.Exception (EXCEPTION)
+import Control.Monad.Eff.Exception (EXCEPTION, error)
+import Control.Monad.Except (throwError)
 import Data.Foreign.Class (class Encode, class Decode)
 import Data.Foreign.Generic (defaultOptions, genericEncode, genericDecode)
 import Data.Maybe (Maybe(..))
@@ -23,6 +24,13 @@ newtype MyJson = MyJson { fuck :: String }
 derive instance genericMyJson :: Generic MyJson _
 
 instance encodeMyJson :: Encode MyJson where
+  encode = genericEncode $ defaultOptions { unwrapSingleConstructors = true }
+
+newtype YourJson = YourJson { yours :: String }
+
+derive instance genericYourJson :: Generic YourJson _
+
+instance encodeYourJson :: Encode YourJson where
   encode = genericEncode $ defaultOptions { unwrapSingleConstructors = true }
 
 newtype Blog = Blog { title :: String, content :: String }
@@ -62,6 +70,11 @@ getConfig = do
 
 
 
+errorTest :: forall e. Handler e (Result YourJson)
+errorTest = throwError $ error ""
+
+
+
 createBlog :: forall e. Blog -> Handler e (Result MyJson)
 createBlog (Blog b) = pure $ result 200 $ Just $ MyJson { fuck: "title: " <> b.title <> ", content: " <> b.content <> " requested." }
 
@@ -70,4 +83,4 @@ createBlog (Blog b) = pure $ result 200 $ Just $ MyJson { fuck: "title: " <> b.t
 main :: forall e. Eff (process :: PROCESS, console :: CONSOLE, exception :: EXCEPTION, ref :: REF, http :: HTTP | e) Unit
 main = do
   config <- getConfig
-  run config { createBlog }
+  run config { errorTest, createBlog }
