@@ -9,7 +9,7 @@ import Data.String (drop)
 import Node.HTTP (HTTP, ListenOptions, createServer, listen, requestMethod, requestURL)
 import Node.Stdout (log)
 import Conveyor.Internal (respond)
-import Conveyor.Responsable (ErrorMsg(..))
+import Conveyor.Responsable (errorMsg)
 import Conveyor.Servable (class Servable, serve)
 
 
@@ -23,8 +23,8 @@ run opts server = do
           "POST" ->
             case serve server req res url of
               Just s -> s
-              Nothing -> respond res $ ErrorMsg { status: 400, message: "No such route" }
-          _ -> respond res $ ErrorMsg { status: 400, message: "HTTP method is not POST" }
+              Nothing -> respond res $ errorMsg 404 "No such route"
+          _ -> respond res $ errorMsg 400 "HTTP method is not POST"
   listen server' opts $ unsafeCoerceEff $ logListening opts
 
 

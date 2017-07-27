@@ -1,7 +1,7 @@
 module Conveyor.Responsable
   ( class Responsable, encodeBody, statusCode
   , Result, result
-  , ErrorMsg(..)
+  , ErrorMsg, errorMsg
   ) where
 
 import Prelude
@@ -37,3 +37,8 @@ instance responsableErrorMsg :: Responsable ErrorMsg where
 
 result :: forall r. Encode r => Int -> Maybe r -> Result r
 result status body = Result { status, body }
+
+
+
+errorMsg :: Int -> String -> ErrorMsg
+errorMsg status message = ErrorMsg { status, message }

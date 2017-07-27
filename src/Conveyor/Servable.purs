@@ -30,7 +30,7 @@ import Unsafe.Coerce (unsafeCoerce)
 
 import Conveyor.Handler (Handler)
 import Conveyor.Internal (LProxy(..), get, respond, rowToList)
-import Conveyor.Responsable (class Responsable, ErrorMsg(..))
+import Conveyor.Responsable (class Responsable, errorMsg)
 
 
 
@@ -65,7 +65,7 @@ parseMediaType = split (Pattern ";") >>> head >>> map MediaType
 
 instance servableHandler :: Responsable r => Servable e (Handler e r) where
   serve handler req res _ =
-    let onError' = const $ respond res $ ErrorMsg { status: 500, message: "Internal server error" }
+    let onError' = const $ respond res $ errorMsg 500 "Internal server error"
         onSuccess' r = respond res r
      in pure $ void $ runAff onError' onSuccess' $ unwrap handler
 
@@ -78,15 +78,15 @@ instance servableWithBody :: (Decode b, Servable e s) => Servable e (b -> s) whe
         onDataString' ref chunk =
           readRef ref >>= writeRef ref <<< flip append chunk
 
-        onError' = const $ respond res $ ErrorMsg { status: 500, message: "Failed reading requested body" }
+        onError' = const $ respond res $ errorMsg 500 "Failed reading requested body"
 
         onEnd' ref = do
           body <- readRef ref
           case runExcept $ decodeBody req body of
-            Left _ -> respond res $ ErrorMsg { status: 400, message: "Request body is invalid" }
+            Left _ -> respond res $ errorMsg 400 "Request body is invalid"
             Right b ->
               case serve (handler b) req res path of
-                Nothing -> respond res $ ErrorMsg { status: 400, message: "No such route" }
+                Nothing -> respond res $ errorMsg 404 "No such route"
                 Just e -> unsafeCoerceEff e
 
      in Just $ unsafeCoerceEff do
