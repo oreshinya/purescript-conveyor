@@ -1,7 +1,7 @@
 module Conveyor.Responsable
   ( class Responsable, encodeBody, statusCode
-  , Result, result
-  , ErrorMsg, errorMsg
+  , Result(..)
+  , ErrorMsg(..)
   , respond
   ) where
 
@@ -38,16 +38,6 @@ instance responsableResult :: Encode r => Responsable (Result r) where
 instance responsableErrorMsg :: Responsable ErrorMsg where
   statusCode (ErrorMsg r) = r.status
   encodeBody (ErrorMsg r) = "{ \"message\": \"" <> r.message <> "\" }"
-
-
-
-result :: forall r. Encode r => Int -> Maybe r -> Result r
-result status body = Result { status, body }
-
-
-
-errorMsg :: Int -> String -> ErrorMsg
-errorMsg status message = ErrorMsg { status, message }
 
 
 
