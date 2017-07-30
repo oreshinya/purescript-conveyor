@@ -1,23 +1,22 @@
 module Main where
 
 import Prelude
-
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
-import Control.Monad.Eff.Exception (EXCEPTION, error)
 import Control.Monad.Eff.Ref (REF)
+import Control.Monad.Eff.Exception (EXCEPTION, error)
 import Control.Monad.Except (throwError)
-import Conveyor (run)
-import Conveyor.Handler (Handler)
-import Conveyor.Responsable (Result(..))
 import Data.Foreign.Class (class Encode, class Decode)
 import Data.Foreign.Generic (defaultOptions, genericEncode, genericDecode)
-import Data.Generic.Rep (class Generic)
-import Data.Int (fromString)
 import Data.Maybe (Maybe(..))
+import Data.Int (fromString)
 import Node.HTTP (HTTP, ListenOptions)
 import Node.Process (PROCESS, lookupEnv)
+import Data.Generic.Rep (class Generic)
+import Conveyor (run)
+import Conveyor.Handler (Handler)
+import Conveyor.Responsable (Result, result)
 
 
 
@@ -80,10 +79,7 @@ errorTest = do
 
 
 createBlog :: forall e. Blog -> Handler e (Result MyJson)
-createBlog (Blog b) = pure $ Result
-  { status: 200
-  , body: Just $ MyJson { fuck: "title: " <> b.title <> ", content: " <> b.content <> " requested." }
-  }
+createBlog (Blog b) = pure $ result 200 $ Just $ MyJson { fuck: "title: " <> b.title <> ", content: " <> b.content <> " requested." }
 
 
 
