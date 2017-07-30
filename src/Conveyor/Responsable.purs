@@ -2,6 +2,7 @@ module Conveyor.Responsable
   ( class Responsable, encodeBody, statusCode
   , Result, result
   , ErrorMsg, errorMsg
+  , StatusOnly, statusOnly
   , respond
   ) where
 
@@ -20,6 +21,8 @@ import Node.Stream (end, writeString)
 newtype Result r = Result { status :: Int, body :: Maybe r }
 
 newtype ErrorMsg = ErrorMsg { status :: Int, message :: String }
+
+newtype StatusOnly = StatusOnly Int
 
 
 
@@ -41,6 +44,12 @@ instance responsableErrorMsg :: Responsable ErrorMsg where
 
 
 
+instance responsableStatusOnly :: Responsable StatusOnly where
+  statusCode (StatusOnly i) = i
+  encodeBody _ = ""
+
+
+
 result :: forall r. Encode r => Int -> Maybe r -> Result r
 result status body = Result { status, body }
 
@@ -48,6 +57,11 @@ result status body = Result { status, body }
 
 errorMsg :: Int -> String -> ErrorMsg
 errorMsg status message = ErrorMsg { status, message }
+
+
+
+statusOnly :: Int -> StatusOnly
+statusOnly = StatusOnly
 
 
 
