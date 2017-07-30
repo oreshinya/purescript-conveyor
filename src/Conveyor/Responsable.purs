@@ -11,14 +11,13 @@ import Prelude
 import Control.Monad.Eff (Eff)
 import Data.Foreign.Class (class Encode)
 import Data.Foreign.Generic (encodeJSON)
-import Data.Maybe (Maybe, maybe)
 import Node.Encoding (Encoding(UTF8))
 import Node.HTTP (HTTP, Response, responseAsStream, setHeader, setStatusCode)
 import Node.Stream (end, writeString)
 
 
 
-newtype Result r = Result { status :: Int, body :: Maybe r }
+newtype Result r = Result { status :: Int, body :: r }
 
 newtype ErrorMsg = ErrorMsg { status :: Int, message :: String }
 
@@ -34,7 +33,7 @@ class Responsable r where
 
 instance responsableResult :: Encode r => Responsable (Result r) where
   statusCode (Result r) = r.status
-  encodeBody (Result r) = maybe "" encodeJSON r.body
+  encodeBody (Result r) = encodeJSON r.body
 
 
 
@@ -50,7 +49,7 @@ instance responsableStatusOnly :: Responsable StatusOnly where
 
 
 
-result :: forall r. Encode r => Int -> Maybe r -> Result r
+result :: forall r. Encode r => Int -> r -> Result r
 result status body = Result { status, body }
 
 

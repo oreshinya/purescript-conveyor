@@ -16,7 +16,7 @@ import Node.Process (PROCESS, lookupEnv)
 import Data.Generic.Rep (class Generic)
 import Conveyor (run)
 import Conveyor.Handler (Handler)
-import Conveyor.Responsable (Result, result)
+import Conveyor.Responsable (Result, StatusOnly, result, statusOnly)
 
 
 
@@ -79,11 +79,16 @@ errorTest = do
 
 
 createBlog :: forall e. Blog -> Handler e (Result MyJson)
-createBlog (Blog b) = pure $ result 200 $ Just $ MyJson { fuck: "title: " <> b.title <> ", content: " <> b.content <> " requested." }
+createBlog (Blog b) = pure $ result 200 $ MyJson { fuck: "title: " <> b.title <> ", content: " <> b.content <> " requested." }
+
+
+
+none :: forall e. Handler e StatusOnly
+none = pure $ statusOnly 204
 
 
 
 main :: forall e. Eff (process :: PROCESS, console :: CONSOLE, exception :: EXCEPTION, ref :: REF, http :: HTTP | e) Unit
 main = do
   config <- getConfig
-  run config { errorTest, createBlog }
+  run config { errorTest, createBlog, none }
