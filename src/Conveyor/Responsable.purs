@@ -2,12 +2,18 @@ module Conveyor.Responsable
   ( class Responsable, encodeBody, statusCode
   , Result, result
   , ErrorMsg, errorMsg
+  , respond
   ) where
 
 import Prelude
+
+import Control.Monad.Eff (Eff)
 import Data.Foreign.Class (class Encode)
 import Data.Foreign.Generic (encodeJSON)
 import Data.Maybe (Maybe, maybe)
+import Node.Encoding (Encoding(UTF8))
+import Node.HTTP (HTTP, Response, responseAsStream, setHeader, setStatusCode)
+import Node.Stream (end, writeString)
 
 
 
@@ -42,3 +48,18 @@ result status body = Result { status, body }
 
 errorMsg :: Int -> String -> ErrorMsg
 errorMsg status message = ErrorMsg { status, message }
+
+
+
+respond :: forall e r.
+           Responsable r =>
+           Response ->
+           r ->
+           Eff (http :: HTTP | e) Unit
+respond res r =
+  let writable = responseAsStream res
+   in do
+     setHeader res "Content-Type" "application/json"
+     setStatusCode res $ statusCode r
+     void $ writeString writable UTF8 (encodeBody r) $ pure unit
+     end writable $ pure unit

@@ -29,8 +29,8 @@ import Type.Row (class RowToList, kind RowList, Cons, Nil)
 import Unsafe.Coerce (unsafeCoerce)
 
 import Conveyor.Handler (Handler)
-import Conveyor.Internal (LProxy(..), get, respond, rowToList)
-import Conveyor.Responsable (class Responsable, errorMsg)
+import Conveyor.Internal (LProxy(..), get, rowToList)
+import Conveyor.Responsable (class Responsable, errorMsg, respond)
 
 
 

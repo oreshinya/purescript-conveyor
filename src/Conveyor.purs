@@ -8,8 +8,7 @@ import Data.Maybe (Maybe(..))
 import Data.String (drop)
 import Node.HTTP (HTTP, ListenOptions, createServer, listen, requestMethod, requestURL)
 import Node.Stdout (log)
-import Conveyor.Internal (respond)
-import Conveyor.Responsable (errorMsg)
+import Conveyor.Responsable (errorMsg, respond)
 import Conveyor.Servable (class Servable, serve)
 
 
