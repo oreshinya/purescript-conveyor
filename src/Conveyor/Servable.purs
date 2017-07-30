@@ -4,11 +4,15 @@ module Conveyor.Servable
   ) where
 
 import Prelude
+
 import Control.Monad.Aff (runAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Ref (newRef, readRef, writeRef)
 import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
 import Control.Monad.Except (runExcept, throwError)
+import Conveyor.Handler (Handler)
+import Conveyor.Internal (LProxy(..), get, rowToList)
+import Conveyor.Responsable (class Responsable, errorMsg, respond)
 import Data.Array (head)
 import Data.Either (Either(..))
 import Data.Foreign (ForeignError(ForeignError), F)
@@ -23,14 +27,10 @@ import Data.StrMap (lookup)
 import Data.String (Pattern(..), split)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 import Node.Encoding (Encoding(UTF8))
-import Node.HTTP (HTTP, Request, Response, requestHeaders, requestAsStream)
+import Node.HTTP (HTTP, Request, Response, requestAsStream, requestHeaders, requestMethod)
 import Node.Stream (onDataString, onError, onEnd)
 import Type.Row (class RowToList, kind RowList, Cons, Nil)
 import Unsafe.Coerce (unsafeCoerce)
-
-import Conveyor.Handler (Handler)
-import Conveyor.Internal (LProxy(..), get, rowToList)
-import Conveyor.Responsable (class Responsable, errorMsg, respond)
 
 
 
@@ -65,9 +65,12 @@ parseMediaType = split (Pattern ";") >>> head >>> map MediaType
 
 instance servableHandler :: Responsable r => Servable e (Handler e r) where
   serve handler req res _ =
-    let onError' = const $ respond res $ errorMsg 500 "Internal server error"
+    let method = requestMethod req
+        onError' = const $ respond res $ errorMsg 500 "Internal server error"
         onSuccess' r = respond res r
-     in pure $ void $ runAff onError' onSuccess' $ unwrap handler
+     in case method of
+          "POST" -> pure $ void $ runAff onError' onSuccess' $ unwrap handler
+          _ -> pure $ respond res $ errorMsg 400 "HTTP Method is not POST"
 
 
 
