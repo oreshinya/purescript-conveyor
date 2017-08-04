@@ -1,22 +1,24 @@
 module Main where
 
 import Prelude
+
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
-import Control.Monad.Eff.Ref (REF)
 import Control.Monad.Eff.Exception (EXCEPTION, error)
+import Control.Monad.Eff.Ref (REF)
 import Control.Monad.Except (throwError)
-import Data.Foreign.Class (class Encode, class Decode)
-import Data.Foreign.Generic (defaultOptions, genericEncode, genericDecode)
-import Data.Maybe (Maybe(..))
-import Data.Int (fromString)
-import Node.HTTP (HTTP, ListenOptions)
-import Node.Process (PROCESS, lookupEnv)
-import Data.Generic.Rep (class Generic)
 import Conveyor (run)
+import Conveyor.Body (Body(..))
 import Conveyor.Handler (Handler)
 import Conveyor.Responsable (Result, StatusOnly, result, statusOnly)
+import Data.Foreign.Class (class Encode, class Decode)
+import Data.Foreign.Generic (defaultOptions, genericEncode, genericDecode)
+import Data.Generic.Rep (class Generic)
+import Data.Int (fromString)
+import Data.Maybe (Maybe(..))
+import Node.HTTP (HTTP, ListenOptions)
+import Node.Process (PROCESS, lookupEnv)
 
 
 
@@ -78,8 +80,8 @@ errorTest = do
 
 
 
-createBlog :: forall e. Blog -> Handler e (Result MyJson)
-createBlog (Blog b) = pure $ result 200 $ MyJson { fuck: "title: " <> b.title <> ", content: " <> b.content <> " requested." }
+createBlog :: forall e. Body Blog -> Handler e (Result MyJson)
+createBlog (Body (Blog b)) = pure $ result 200 $ MyJson { fuck: "title: " <> b.title <> ", content: " <> b.content <> " requested." }
 
 
 
@@ -91,4 +93,4 @@ none = pure $ statusOnly 204
 main :: forall e. Eff (process :: PROCESS, console :: CONSOLE, exception :: EXCEPTION, ref :: REF, http :: HTTP | e) Unit
 main = do
   config <- getConfig
-  run config { errorTest, createBlog, none }
+  run { errorTest, createBlog, none } config
