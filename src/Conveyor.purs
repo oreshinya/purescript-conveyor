@@ -8,7 +8,7 @@ import Prelude
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
-import Conveyor.Responsable (errorMsg, respond)
+import Conveyor.Respondable (errorMsg, respond)
 import Conveyor.Servable (class Servable, serve)
 import Data.Maybe (Maybe(..))
 import Data.String (drop)

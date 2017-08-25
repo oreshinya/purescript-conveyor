@@ -1,5 +1,5 @@
-module Conveyor.Responsable
-  ( class Responsable, encodeBody, statusCode
+module Conveyor.Respondable
+  ( class Respondable, encodeBody, statusCode
   , Result, result
   , ErrorMsg, errorMsg
   , StatusOnly, statusOnly
@@ -25,25 +25,25 @@ newtype StatusOnly = StatusOnly Int
 
 
 
-class Responsable r where
+class Respondable r where
   encodeBody :: r -> String
   statusCode :: r -> Int
 
 
 
-instance responsableResult :: Encode r => Responsable (Result r) where
+instance responsableResult :: Encode r => Respondable (Result r) where
   statusCode (Result r) = r.status
   encodeBody (Result r) = encodeJSON r.body
 
 
 
-instance responsableErrorMsg :: Responsable ErrorMsg where
+instance responsableErrorMsg :: Respondable ErrorMsg where
   statusCode (ErrorMsg r) = r.status
   encodeBody (ErrorMsg r) = "{ \"message\": \"" <> r.message <> "\" }"
 
 
 
-instance responsableStatusOnly :: Responsable StatusOnly where
+instance responsableStatusOnly :: Respondable StatusOnly where
   statusCode (StatusOnly i) = i
   encodeBody _ = ""
 
@@ -65,7 +65,7 @@ statusOnly = StatusOnly
 
 
 respond :: forall e r.
-           Responsable r =>
+           Respondable r =>
            Response ->
            r ->
            Eff (http :: HTTP | e) Unit

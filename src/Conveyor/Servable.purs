@@ -14,7 +14,7 @@ import Conveyor.Body (Body(..))
 import Conveyor.Context (Context(..))
 import Conveyor.Handler (Handler)
 import Conveyor.Internal (LProxy(..), get, rowToList)
-import Conveyor.Responsable (class Responsable, errorMsg, respond)
+import Conveyor.Respondable (class Respondable, errorMsg, respond)
 import Data.Array (head)
 import Data.Either (Either(..))
 import Data.Foreign (ForeignError(ForeignError), F)
@@ -46,7 +46,7 @@ class ServableList c e (l :: RowList) (r :: # Type) | l -> r where
 
 
 
-instance servableHandler :: Responsable r => Servable c e (Handler e r) where
+instance servableHandler :: Respondable r => Servable c e (Handler e r) where
   serve _ handler req res _ =
     let method = requestMethod req
         onError' = const $ respond res $ errorMsg 500 "Internal server error"
