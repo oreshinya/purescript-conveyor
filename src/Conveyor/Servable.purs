@@ -14,7 +14,7 @@ import Conveyor.Body (Body(..))
 import Conveyor.Context (Context(..))
 import Conveyor.Handler (Handler)
 import Conveyor.Internal (LProxy(..), get, rowToList)
-import Conveyor.Respondable (class Respondable, errorMsg, respond)
+import Conveyor.Respondable (class Respondable, ConveyorError(..), respond, systemError)
 import Data.Array (head)
 import Data.Either (Either(..))
 import Data.Foreign (ForeignError(ForeignError), F)
@@ -49,11 +49,11 @@ class ServableList c e (l :: RowList) (r :: # Type) | l -> r where
 instance servableHandler :: Respondable r => Servable c e (Handler e r) where
   serve _ handler req res _ =
     let method = requestMethod req
-        onError' = const $ respond res $ errorMsg 500 "Internal server error"
+        onError' = const $ respond res $ (systemError 500 "Internal server error" :: r)
         onSuccess' r = respond res r
      in case method of
           "POST" -> pure $ void $ runAff onError' onSuccess' $ unwrap handler
-          _ -> pure $ respond res $ errorMsg 400 "HTTP Method is not POST"
+          _ -> pure $ respond res $ ConveyorError 400 "HTTP Method is not POST"
 
 
 
@@ -64,15 +64,15 @@ instance servableWithBody :: (Decode b, Servable c e s) => Servable c e (Body b 
         onDataString' ref chunk =
           readRef ref >>= writeRef ref <<< flip append chunk
 
-        onError' = const $ respond res $ errorMsg 500 "Failed reading requested body"
+        onError' = const $ respond res $ ConveyorError 500 "Failed reading requested body"
 
         onEnd' ref = do
           body <- readRef ref
           case runExcept $ decodeBody req body of
-            Left _ -> respond res $ errorMsg 400 "Request body is invalid"
+            Left _ -> respond res $ ConveyorError 400 "Request body is invalid"
             Right b ->
               case serve ctx (handler $ Body b) req res path of
-                Nothing -> respond res $ errorMsg 404 "No such route"
+                Nothing -> respond res $ ConveyorError 404 "No such route"
                 Just e -> unsafeCoerceEff e
 
      in Just $ unsafeCoerceEff do

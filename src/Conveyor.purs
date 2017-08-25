@@ -8,7 +8,7 @@ import Prelude
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
-import Conveyor.Respondable (errorMsg, respond)
+import Conveyor.Respondable (ConveyorError(..), respond)
 import Conveyor.Servable (class Servable, serve)
 import Data.Maybe (Maybe(..))
 import Data.String (drop)
@@ -28,7 +28,7 @@ runWithContext ctx server opts = do
     let url = drop 1 $ requestURL req
      in case serve ctx server req res url of
           Just s -> s
-          Nothing -> respond res $ errorMsg 404 "No such route"
+          Nothing -> respond res $ ConveyorError 404 "No such route"
   listen server' opts $ unsafeCoerceEff $ logListening opts
 
 
