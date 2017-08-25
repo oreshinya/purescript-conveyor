@@ -11,9 +11,9 @@ import Control.Monad.Except (throwError)
 import Conveyor (run)
 import Conveyor.Body (Body(..))
 import Conveyor.Handler (Handler)
-import Conveyor.Responsable (Result, StatusOnly, result, statusOnly)
+import Conveyor.Respondable (class Respondable)
 import Data.Foreign.Class (class Encode, class Decode)
-import Data.Foreign.Generic (defaultOptions, genericEncode, genericDecode)
+import Data.Foreign.Generic (defaultOptions, encodeJSON, genericDecode, genericEncode)
 import Data.Generic.Rep (class Generic)
 import Data.Int (fromString)
 import Data.Maybe (Maybe(..))
@@ -21,6 +21,19 @@ import Node.HTTP (HTTP, ListenOptions)
 import Node.Process (PROCESS, lookupEnv)
 
 
+
+data Result r
+  = Success { status :: Int, body :: r }
+  | Failure { status :: Int, message :: String }
+
+instance respondableResult :: Encode r => Respondable (Result r) where
+  statusCode (Success s) = s.status
+  statusCode (Failure f) = f.status
+
+  encodeBody (Success s) = encodeJSON s.body
+  encodeBody (Failure f) = "{ \"message\": [\"" <> f.message <> "\"] }"
+
+  systemError status message = Failure { status, message }
 
 newtype MyJson = MyJson { fuck :: String }
 
@@ -81,16 +94,14 @@ errorTest = do
 
 
 createBlog :: forall e. Body Blog -> Handler e (Result MyJson)
-createBlog (Body (Blog b)) = pure $ result 200 $ MyJson { fuck: "title: " <> b.title <> ", content: " <> b.content <> " requested." }
-
-
-
-none :: forall e. Handler e StatusOnly
-none = pure $ statusOnly 204
+createBlog (Body (Blog b)) = pure $ Success
+  { status: 200
+  , body: MyJson { fuck: "title: " <> b.title <> ", content: " <> b.content <> " requested." }
+  }
 
 
 
 main :: forall e. Eff (process :: PROCESS, console :: CONSOLE, exception :: EXCEPTION, ref :: REF, http :: HTTP | e) Unit
 main = do
   config <- getConfig
-  run { errorTest, createBlog, none } config
+  run { errorTest, createBlog } config
