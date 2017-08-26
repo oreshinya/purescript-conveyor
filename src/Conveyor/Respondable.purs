@@ -7,6 +7,7 @@ module Conveyor.Respondable
 import Prelude
 
 import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Exception (Error)
 import Node.Encoding (Encoding(UTF8))
 import Node.HTTP (HTTP, Response, responseAsStream, setHeader, setStatusCode)
 import Node.Stream (end, writeString)
@@ -20,14 +21,14 @@ data ConveyorError = ConveyorError Int String
 class Respondable r where
   encodeBody :: r -> String
   statusCode :: r -> Int
-  systemError :: Int -> String -> r
+  systemError :: Error -> r
 
 
 
 instance respondableConveyorError :: Respondable ConveyorError where
   statusCode (ConveyorError status _) = status
   encodeBody (ConveyorError _ message) = "{ \"message\": \"" <> message <> "\" }"
-  systemError = ConveyorError
+  systemError = const $ ConveyorError 500 ""
 
 
 

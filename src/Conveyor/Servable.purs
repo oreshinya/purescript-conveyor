@@ -49,7 +49,7 @@ class ServableList c e (l :: RowList) (r :: # Type) | l -> r where
 instance servableHandler :: Respondable r => Servable c e (Handler e r) where
   serve _ handler req res _ =
     let method = requestMethod req
-        onError' = const $ respond res $ (systemError 500 "Internal server error" :: r)
+        onError' err = respond res $ (systemError err :: r)
         onSuccess' r = respond res r
      in case method of
           "POST" -> pure $ void $ runAff onError' onSuccess' $ unwrap handler
