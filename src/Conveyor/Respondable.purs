@@ -32,11 +32,12 @@ instance respondableConveyorError :: Respondable ConveyorError where
 
 
 
-respond :: forall e r.
-           Respondable r =>
-           Response ->
-           r ->
-           Eff (http :: HTTP | e) Unit
+respond
+  :: forall e r
+   . Respondable r
+  => Response
+  -> r
+  -> Eff (http :: HTTP | e) Unit
 respond res r =
   let writable = responseAsStream res
    in do

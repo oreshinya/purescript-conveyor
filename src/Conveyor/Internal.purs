@@ -18,12 +18,13 @@ data LProxy (l :: RowList) = LProxy
 
 
 
-get :: forall l a r1 r2
-     . IsSymbol l
-    => RowCons l a r1 r2
-    => SProxy l
-    -> Record r2
-    -> a
+get
+  :: forall l a r1 r2
+   . IsSymbol l
+  => RowCons l a r1 r2
+  => SProxy l
+  -> Record r2
+  -> a
 get l r =
     fromMaybe'
       (\_ -> unsafeCrashWith ("unsafeGet: missing key " <> show s))
