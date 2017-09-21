@@ -11,9 +11,10 @@ import Control.Monad.Except (throwError)
 import Conveyor (run)
 import Conveyor.Body (Body(..))
 import Conveyor.Handler (Handler)
+import Conveyor.Readable (class Readable)
 import Conveyor.Respondable (class Respondable)
 import Data.Foreign.Class (class Encode, class Decode)
-import Data.Foreign.Generic (defaultOptions, encodeJSON, genericDecode, genericEncode)
+import Data.Foreign.Generic (defaultOptions, encodeJSON, decodeJSON, genericDecode, genericEncode)
 import Data.Generic.Rep (class Generic)
 import Data.Int (fromString)
 import Data.Maybe (Maybe(..))
@@ -56,6 +57,8 @@ derive instance genericBlog :: Generic Blog _
 instance decodeBlog :: Decode Blog where
   decode = genericDecode $ defaultOptions { unwrapSingleConstructors = true }
 
+instance readableBlog :: Readable Blog where
+  readBody = decodeJSON
 
 
 getHostname :: forall e. Eff e String

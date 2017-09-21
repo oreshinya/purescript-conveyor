@@ -14,12 +14,11 @@ import Conveyor.Body (Body(..))
 import Conveyor.Context (Context(..))
 import Conveyor.Handler (Handler)
 import Conveyor.Internal (LProxy(..), get, rowToList)
+import Conveyor.Readable (class Readable, readBody)
 import Conveyor.Respondable (class Respondable, ConveyorError(..), respond, systemError)
 import Data.Array (head)
 import Data.Either (Either(..))
 import Data.Foreign (ForeignError(ForeignError), F)
-import Data.Foreign.Class (class Decode)
-import Data.Foreign.Generic (decodeJSON)
 import Data.List.NonEmpty (singleton)
 import Data.Maybe (Maybe(..))
 import Data.MediaType (MediaType(..))
@@ -57,7 +56,7 @@ instance servableHandler :: Respondable r => Servable c e (Handler e r) where
 
 
 
-instance servableWithBody :: (Decode b, Servable c e s) => Servable c e (Body b -> s) where
+instance servableWithBody :: (Readable b, Servable c e s) => Servable c e (Body b -> s) where
   serve ctx handler req res path =
     let readable = requestAsStream req
 
@@ -105,10 +104,10 @@ instance servableListCons :: (IsSymbol route, Servable c e s, ServableList c e l
 
 
 
-decodeBody :: forall a. Decode a => Request -> String -> F a
+decodeBody :: forall a. Readable a => Request -> String -> F a
 decodeBody req body =
   case lookup "content-type" (requestHeaders req) >>= parseMediaType of
-    Just mediaType | mediaType == applicationJSON -> decodeJSON body
+    Just mediaType | mediaType == applicationJSON -> readBody body
     _ -> throwError $ singleton $ ForeignError "Received unpermitted Content-Type."
 
 
