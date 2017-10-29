@@ -24,30 +24,13 @@
     "output"
   ],
   "dependencies": {
-    "purescript-prelude": "^3.0.0",
-    "purescript-eff": "^3.1.0",
-    "purescript-console": "^3.0.0",
-    "purescript-exceptions": "^3.0.0",
-    "purescript-refs": "^3.0.0",
-    "purescript-transformers": "^3.3.0",
-    "purescript-arrays": "^4.1.0",
-    "purescript-either": "^3.0.0",
-    "purescript-maybe": "^3.0.0",
     "purescript-media-types": "^3.0.0",
-    "purescript-strings": "^3.1.0",
-    "purescript-maps": "^3.0.0",
-    "purescript-node-http": "^4.0.0",
-    "purescript-node-streams": "^3.1.0",
-    "purescript-node-buffer": "^3.0.0",
-    "purescript-stdout": "^0.1.1",
-    "purescript-aff": "^3.1.0",
-    "purescript-typelevel-prelude": "^2.4.0",
-    "purescript-partial": "^1.2.1",
-    "purescript-unsafe-coerce": "^3.0.0",
-    "purescript-foreign": "^4.0.1"
+    "purescript-node-http": "^4.1.0",
+    "purescript-stdout": "^0.2.0",
+    "purescript-aff": "^4.0.0",
+    "purescript-typelevel-prelude": "^2.5.0"
   },
   "devDependencies": {
-    "purescript-node-process": "^4.0.0",
     "purescript-foreign-generic": "^5.0.0"
   }
 }
