@@ -48,10 +48,12 @@ class ServableList c e (l :: RowList) (r :: # Type) | l -> r where
 instance servableHandler :: Respondable r => Servable c e (Handler e r) where
   serve _ handler req res _ =
     let method = requestMethod req
-        onError' err = respond res $ (systemError err :: r)
-        onSuccess' r = respond res r
+
+        callback (Left err) = respond res $ (systemError err :: r)
+        callback (Right r) = respond res r
+
      in case method of
-          "POST" -> pure $ void $ runAff onError' onSuccess' $ unwrap handler
+          "POST" -> pure $ void $ runAff callback $ unwrap handler
           _ -> pure $ respond res $ ConveyorError 400 "HTTP Method is not POST"
 
 
