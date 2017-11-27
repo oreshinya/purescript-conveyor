@@ -1,5 +1,5 @@
 module Conveyor.Respondable
-  ( class Respondable, encodeBody, statusCode, systemError
+  ( class Respondable, encodeBody, contentType, statusCode, systemError
   , ConveyorError(..)
   , respond
   ) where
@@ -19,6 +19,7 @@ data ConveyorError = ConveyorError Int String
 
 
 class Respondable r where
+  contentType :: r -> String
   encodeBody :: r -> String
   statusCode :: r -> Int
   systemError :: Error -> r
@@ -26,6 +27,7 @@ class Respondable r where
 
 
 instance respondableConveyorError :: Respondable ConveyorError where
+  contentType _ = "application/json"
   statusCode (ConveyorError status _) = status
   encodeBody (ConveyorError _ message) = "{ \"message\": \"" <> message <> "\" }"
   systemError = const $ ConveyorError 500 ""
@@ -41,7 +43,7 @@ respond
 respond res r =
   let writable = responseAsStream res
    in do
-     setHeader res "Content-Type" "application/json"
+     setHeader res "Content-Type" $ contentType r
      setStatusCode res $ statusCode r
      void $ writeString writable UTF8 (encodeBody r) $ pure unit
      end writable $ pure unit

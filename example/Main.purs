@@ -28,6 +28,8 @@ data Result r
   | Failure { status :: Int, message :: String }
 
 instance respondableResult :: Encode r => Respondable (Result r) where
+  contentType _ = "application/json"
+
   statusCode (Success s) = s.status
   statusCode (Failure f) = f.status
 
