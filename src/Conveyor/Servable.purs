@@ -76,7 +76,7 @@ instance servableBatch :: Servable c e s => Servable c e (Batch s) where
 
      in if isBatch then
           case decoded of
-            Left _ -> pure $ conveyorError 400 "Batch request body is invalid"
+            Left _ -> pure $ conveyorError 400 "Invalid batch request"
             Right bodies -> map batchResponder $ traverse onIterate bodies
         else serve servable ctx rawData
 
