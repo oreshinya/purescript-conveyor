@@ -4,10 +4,13 @@ import Prelude
 
 import Control.Monad.Aff (Aff, attempt)
 import Conveyor.Argument (Body(..), Context(..), RawData(..))
-import Conveyor.Internal (LProxy(..), get, rowToList, decodeBody)
+import Conveyor.Batch (Batch(..), BatchParams, batchResponder)
+import Conveyor.Internal (LProxy(..), decodeBody, get, rowToList)
 import Conveyor.Respondable (class Respondable, Responder, conveyorError, fromError, toResponder)
 import Data.Either (Either(..))
+import Data.Foreign (MultipleErrors)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
+import Data.Traversable (traverse)
 import Node.HTTP (requestMethod)
 import Simple.JSON (class ReadForeign)
 import Type.Row (class RowToList, Cons, Nil, kind RowList)
@@ -40,8 +43,8 @@ instance servableAff :: Respondable r => Servable c e (Aff e r) where
 instance servableWithBody :: (ReadForeign b, Servable c e s) => Servable c e (Body b -> s) where
   serve servable ctx rawData@(RawData rd) =
     case decodeBody rd.req rd.rawBody of
+      Left _ -> pure $ conveyorError 400 "Request body is invalid"
       Right body -> serve (servable $ Body body) ctx rawData
-      _ -> pure $ conveyorError 400 "Request body is invalid"
 
 
 
@@ -52,6 +55,30 @@ instance servableWithContext :: Servable c e s => Servable c e (Context c -> s) 
 
 instance servableWithRawData :: Servable c e s => Servable c e (RawData -> s) where
   serve servable ctx rawData = serve (servable rawData) ctx rawData
+
+
+
+instance servableBatch :: Servable c e s => Servable c e (Batch s) where
+  serve (Batch servable) ctx rawData@(RawData rd) =
+    let isBatch = rd.path == "batch" && requestMethod rd.req == "POST"
+
+        decoded :: Either MultipleErrors BatchParams
+        decoded = decodeBody rd.req rd.rawBody
+
+        onIterate { path, rawBody } =
+          serve servable ctx $
+            RawData
+              { req: rd.req
+              , res: rd.res
+              , path
+              , rawBody
+              }
+
+     in if isBatch then
+          case decoded of
+            Left _ -> pure $ conveyorError 400 "Batch request body is invalid"
+            Right bodies -> map batchResponder $ traverse onIterate bodies
+        else serve servable ctx rawData
 
 
 
