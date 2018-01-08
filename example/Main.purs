@@ -2,24 +2,21 @@ module Main where
 
 import Prelude
 
+import Control.Monad.Aff (Aff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
-import Control.Monad.Eff.Exception (EXCEPTION, error)
-import Control.Monad.Eff.Ref (REF)
+import Control.Monad.Eff.Exception (error)
 import Control.Monad.Except (throwError)
-import Conveyor (run)
-import Conveyor.Body (Body(..))
-import Conveyor.Handler (Handler)
-import Conveyor.Readable (class Readable)
-import Conveyor.Respondable (class Respondable)
-import Data.Foreign.Class (class Encode, class Decode)
-import Data.Foreign.Generic (defaultOptions, encodeJSON, decodeJSON, genericDecode, genericEncode)
-import Data.Generic.Rep (class Generic)
+import Conveyor (runWithContext)
+import Conveyor.Argument (Body(..), Context(..), RawData(..))
+import Conveyor.Batch (Batch(..))
+import Conveyor.Respondable (class Respondable, Responder(..))
 import Data.Int (fromString)
 import Data.Maybe (Maybe(..))
 import Node.HTTP (HTTP, ListenOptions)
 import Node.Process (PROCESS, lookupEnv)
+import Simple.JSON (class WriteForeign, write)
 
 
 
@@ -27,40 +24,29 @@ data Result r
   = Success { status :: Int, body :: r }
   | Failure { status :: Int, message :: String }
 
-instance respondableResult :: Encode r => Respondable (Result r) where
-  contentType _ = "application/json"
+type MyJson = { fuck :: String }
 
-  statusCode (Success s) = s.status
-  statusCode (Failure f) = f.status
+type YourJson = { yours :: String }
 
-  encodeBody (Success s) = encodeJSON s.body
-  encodeBody (Failure f) = "{ \"message\": [\"" <> f.message <> "\"] }"
+type Blog = { title :: String, content :: String }
 
-  systemError _ = Failure { status: 500, message: "Internal server error" }
 
-newtype MyJson = MyJson { fuck :: String }
 
-derive instance genericMyJson :: Generic MyJson _
+instance respondableResult :: WriteForeign r => Respondable (Result r) where
+  toResponder (Success s) =
+    Responder
+      { contentType: "application/json"
+      , code: s.status
+      , body: write s.body
+      }
+  toResponder (Failure f) =
+    Responder
+      { contentType: "application/json"
+      , code: f.status
+      , body: write { messages: [ f.message ] }
+      }
+  fromError _ = Failure { status: 500, message: "Internal server error ;)" }
 
-instance encodeMyJson :: Encode MyJson where
-  encode = genericEncode $ defaultOptions { unwrapSingleConstructors = true }
-
-newtype YourJson = YourJson { yours :: String }
-
-derive instance genericYourJson :: Generic YourJson _
-
-instance encodeYourJson :: Encode YourJson where
-  encode = genericEncode $ defaultOptions { unwrapSingleConstructors = true }
-
-newtype Blog = Blog { title :: String, content :: String }
-
-derive instance genericBlog :: Generic Blog _
-
-instance decodeBlog :: Decode Blog where
-  decode = genericDecode $ defaultOptions { unwrapSingleConstructors = true }
-
-instance readableBlog :: Readable Blog where
-  readBody = decodeJSON
 
 
 getHostname :: forall e. Eff e String
@@ -91,22 +77,34 @@ getConfig = do
 
 
 
-errorTest :: forall e. Handler (console :: CONSOLE | e) (Result YourJson)
+rawDataTest :: forall e. RawData -> Aff e (Result YourJson)
+rawDataTest (RawData rd) =
+  pure $ Success { status: 200, body: { yours: rd.rawBody } }
+
+
+
+contextTest :: forall e. Context Int -> Aff e (Result YourJson)
+contextTest (Context i) =
+  pure $ Success { status: 200, body: { yours: show i } }
+
+
+
+errorTest :: forall e. Aff (console :: CONSOLE | e) (Result YourJson)
 errorTest = do
   liftEff $ log "foo"
   throwError $ error ""
 
 
 
-createBlog :: forall e. Body Blog -> Handler e (Result MyJson)
-createBlog (Body (Blog b)) = pure $ Success
+createBlog :: forall e. Body Blog -> Aff e (Result MyJson)
+createBlog (Body b) = pure $ Success
   { status: 200
-  , body: MyJson { fuck: "title: " <> b.title <> ", content: " <> b.content <> " requested." }
+  , body: { fuck: "title: " <> b.title <> ", content: " <> b.content <> " requested." }
   }
 
 
 
-main :: forall e. Eff (process :: PROCESS, console :: CONSOLE, exception :: EXCEPTION, ref :: REF, http :: HTTP | e) Unit
+main :: forall e. Eff (process :: PROCESS, console :: CONSOLE, http :: HTTP | e) Unit
 main = do
   config <- getConfig
-  run { errorTest, createBlog } config
+  runWithContext config 777 $ Batch { contextTest, errorTest, rawDataTest, createBlog }
