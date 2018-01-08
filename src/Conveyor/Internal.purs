@@ -2,13 +2,24 @@ module Conveyor.Internal
   ( LProxy(..)
   , get
   , rowToList
+  , decodeBody
   ) where
 
 import Prelude
-import Data.Maybe (fromMaybe')
+
+import Data.Array (head)
+import Data.Either (Either(..))
+import Data.Foreign (ForeignError(..), MultipleErrors)
+import Data.List.NonEmpty (singleton)
+import Data.Maybe (Maybe(..), fromMaybe')
+import Data.MediaType (MediaType(..))
+import Data.MediaType.Common (applicationJSON)
 import Data.StrMap (lookup)
+import Data.String (Pattern(..), split)
 import Data.Symbol (class IsSymbol, SProxy, reflectSymbol)
+import Node.HTTP (Request, requestHeaders)
 import Partial.Unsafe (unsafeCrashWith)
+import Simple.JSON (class ReadForeign, readJSON)
 import Type.Row (class RowToList, kind RowList)
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -36,3 +47,16 @@ get l r =
 
 rowToList :: forall proxy r l. RowToList r l => proxy r -> LProxy l
 rowToList _ = LProxy
+
+
+
+decodeBody :: forall a. ReadForeign a => Request -> String -> Either MultipleErrors a
+decodeBody req rawBody =
+  case lookup "content-type" (requestHeaders req) >>= parseMediaType of
+    Just mediaType | mediaType == applicationJSON -> readJSON rawBody
+    _ -> Left $ singleton $ ForeignError "Received unpermitted Content-Type."
+
+
+
+parseMediaType :: String -> Maybe MediaType
+parseMediaType = split (Pattern ";") >>> head >>> map MediaType

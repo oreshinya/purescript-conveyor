@@ -3,14 +3,13 @@ module Conveyor.Servable where
 import Prelude
 
 import Control.Monad.Aff (Aff, attempt)
-import Control.Monad.Except (runExcept)
 import Conveyor.Argument (Body(..), Context(..), RawData(..))
-import Conveyor.Internal (LProxy(..), get, rowToList)
-import Conveyor.Readable (class Readable, decodeBody)
+import Conveyor.Internal (LProxy(..), get, rowToList, decodeBody)
 import Conveyor.Respondable (class Respondable, Responder, conveyorError, fromError, toResponder)
 import Data.Either (Either(..))
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 import Node.HTTP (requestMethod)
+import Simple.JSON (class ReadForeign)
 import Type.Row (class RowToList, Cons, Nil, kind RowList)
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -38,9 +37,9 @@ instance servableAff :: Respondable r => Servable c e (Aff e r) where
 
 
 
-instance servableWithBody :: (Readable b, Servable c e s) => Servable c e (Body b -> s) where
+instance servableWithBody :: (ReadForeign b, Servable c e s) => Servable c e (Body b -> s) where
   serve servable ctx rawData@(RawData rd) =
-    case runExcept $ decodeBody rd.req rd.rawBody of
+    case decodeBody rd.req rd.rawBody of
       Right body -> serve (servable $ Body body) ctx rawData
       _ -> pure $ conveyorError 400 "Request body is invalid"
 
