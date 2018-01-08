@@ -12,7 +12,7 @@ import Data.Foreign (MultipleErrors)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 import Data.Traversable (traverse)
 import Node.HTTP (requestMethod)
-import Simple.JSON (class ReadForeign)
+import Simple.JSON (class ReadForeign, writeJSON)
 import Type.Row (class RowToList, Cons, Nil, kind RowList)
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -65,13 +65,13 @@ instance servableBatch :: Servable c e s => Servable c e (Batch s) where
         decoded :: Either MultipleErrors BatchParams
         decoded = decodeBody rd.req rd.rawBody
 
-        onIterate { path, rawBody } =
+        onIterate { path, body } =
           serve servable ctx $
             RawData
               { req: rd.req
               , res: rd.res
               , path
-              , rawBody
+              , rawBody: writeJSON body
               }
 
      in if isBatch then

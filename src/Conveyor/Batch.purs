@@ -1,7 +1,7 @@
 module Conveyor.Batch where
 
 import Conveyor.Respondable (Responder(..))
-import Data.Foreign (toForeign)
+import Data.Foreign (Foreign, toForeign)
 
 
 
@@ -10,7 +10,7 @@ newtype Batch s = Batch s
 type BatchParams =
   Array
     { path :: String
-    , rawBody :: String
+    , body :: Foreign
     }
 
 
