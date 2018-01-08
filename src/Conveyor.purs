@@ -5,33 +5,69 @@ module Conveyor
 
 import Prelude
 
+import Control.Monad.Aff (runAff_)
+import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Console (CONSOLE)
+import Control.Monad.Eff.Exception (message)
+import Control.Monad.Eff.Ref (newRef, readRef, writeRef)
 import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
-import Conveyor.Respondable (ConveyorError(..), respond)
+import Conveyor.Argument (RawData(..))
+import Conveyor.Respondable (conveyorError, send)
 import Conveyor.Servable (class Servable, serve)
-import Data.Maybe (Maybe(..))
+import Data.Either (Either(..))
 import Data.String (drop)
-import Node.HTTP (HTTP, ListenOptions, createServer, listen, requestURL)
-import Node.Stdout (log)
+import Node.Encoding (Encoding(..))
+import Node.HTTP (HTTP, ListenOptions, Request, Response, createServer, listen, requestAsStream, requestURL)
+import Node.Stream (onDataString, onEnd, onError)
 
 
 
-run :: forall e s. Servable Unit e s => s -> ListenOptions -> Eff (http :: HTTP | e) Unit
-run = runWithContext unit
+run
+  :: forall e s
+   . Servable Unit (http :: HTTP | e) s
+  => ListenOptions
+  -> s
+  -> Eff (http :: HTTP | e) Unit
+run opts = runWithContext opts unit
 
 
 
-runWithContext :: forall c e s. Servable c e s => c -> s -> ListenOptions -> Eff (http :: HTTP | e) Unit
-runWithContext ctx server opts = do
-  server' <- createServer \req res ->
-    let url = drop 1 $ requestURL req
-     in case serve ctx server req res url of
-          Just s -> s
-          Nothing -> respond res $ ConveyorError 404 "No such route"
-  listen server' opts $ unsafeCoerceEff $ logListening opts
+runWithContext
+  :: forall c e s
+   . Servable c (http :: HTTP | e) s
+  => ListenOptions
+  -> c
+  -> s
+  -> Eff (http :: HTTP | e) Unit
+runWithContext opts ctx servable = do
+  server <- createServer $ createHandler ctx servable
+  listen server opts $ pure unit
 
 
 
-logListening :: forall e. ListenOptions -> Eff (console :: CONSOLE | e) Unit
-logListening { port } = log $ "Listening on port " <> show port <> "."
+createHandler
+  :: forall c e s
+   . Servable c (http :: HTTP | e) s
+  => c
+  -> s
+  -> Request
+  -> Response
+  -> Eff (http :: HTTP | e) Unit
+createHandler ctx servable req res =
+  let path = drop 1 $ requestURL req
+      readable = requestAsStream req
+
+      callback (Left err) = onError' err
+      callback (Right suc) = send res suc
+
+      onDataString' ref chunk = readRef ref >>= writeRef ref <<< flip append chunk
+      onError' err = send res $ conveyorError 500 $ message err
+      onEnd' ref = do
+        rawBody <- readRef ref
+        runAff_ callback $ unsafeCoerceAff $ serve servable ctx $ RawData { req, res, path, rawBody }
+
+   in unsafeCoerceEff do
+      ref <- newRef ""
+      onDataString readable UTF8 $ onDataString' ref
+      onError readable onError'
+      onEnd readable $ onEnd' ref
