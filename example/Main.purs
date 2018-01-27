@@ -35,13 +35,13 @@ type Blog = { title :: String, content :: String }
 instance respondableResult :: WriteForeign r => Respondable (Result r) where
   toResponder (Success s) =
     Responder
-      { contentType: "application/json"
+      { contentType: "application/json; charset=utf-8"
       , code: s.status
       , body: write s.body
       }
   toResponder (Failure f) =
     Responder
-      { contentType: "application/json"
+      { contentType: "application/json; charset=utf-8"
       , code: f.status
       , body: write { messages: [ f.message ] }
       }
