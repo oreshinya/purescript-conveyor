@@ -1,6 +1,6 @@
 module Conveyor
-  ( run
-  , runWithContext
+  ( handler
+  , handlerWithContext
   ) where
 
 import Prelude
@@ -17,43 +17,27 @@ import Conveyor.Servable (class Servable, serve)
 import Data.Either (Either(..))
 import Data.String (drop)
 import Node.Encoding (Encoding(..))
-import Node.HTTP (HTTP, ListenOptions, Request, Response, createServer, listen, requestAsStream, requestURL)
+import Node.HTTP (HTTP, Request, Response, requestAsStream, requestURL)
 import Node.Stream (onDataString, onEnd, onError)
 
 
 
-run
+handler
   :: forall e s
    . Servable Unit (http :: HTTP | e) s
-  => ListenOptions
-  -> s
-  -> Eff (http :: HTTP | e) Unit
-run opts = runWithContext opts unit
+  => s
+  -> (Request -> Response -> Eff (http :: HTTP | e) Unit)
+handler = handlerWithContext unit
 
 
 
-runWithContext
-  :: forall c e s
-   . Servable c (http :: HTTP | e) s
-  => ListenOptions
-  -> c
-  -> s
-  -> Eff (http :: HTTP | e) Unit
-runWithContext opts ctx servable = do
-  server <- createServer $ createHandler ctx servable
-  listen server opts $ pure unit
-
-
-
-createHandler
+handlerWithContext
   :: forall c e s
    . Servable c (http :: HTTP | e) s
   => c
   -> s
-  -> Request
-  -> Response
-  -> Eff (http :: HTTP | e) Unit
-createHandler ctx servable req res =
+  -> (Request -> Response -> Eff (http :: HTTP | e) Unit)
+handlerWithContext ctx servable = \req res ->
   let path = drop 1 $ requestURL req
       readable = requestAsStream req
 
