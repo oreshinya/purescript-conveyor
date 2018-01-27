@@ -18,7 +18,7 @@ type BatchParams =
 batchResponder :: Array Responder -> Responder
 batchResponder rs =
   Responder
-    { contentType: "application/json"
+    { contentType: "application/json; charset=utf-8"
     , code: 200
     , body: toForeign rs
     }

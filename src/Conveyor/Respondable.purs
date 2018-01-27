@@ -30,7 +30,7 @@ class Respondable r where
 conveyorError :: Int -> String -> Responder
 conveyorError code message =
   Responder
-    { contentType: "application/json"
+    { contentType: "application/json; charset=utf-8"
     , code
     , body: toForeign { message }
     }
