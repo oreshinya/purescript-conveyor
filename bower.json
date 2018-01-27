@@ -26,7 +26,7 @@
   "dependencies": {
     "purescript-media-types": "^3.0.0",
     "purescript-node-http": "^4.1.0",
-    "purescript-aff": "^4.0.0",
+    "purescript-aff": "^4.0.2",
     "purescript-simple-json": "^1.1.0"
   },
   "devDependencies": {
