@@ -43,6 +43,7 @@ send
   -> Responder
   -> Eff (http :: HTTP | e) Unit
 send res (Responder r) = do
+  setHeader res "Connection" "close"
   setHeader res "Content-Type" r.contentType
   setStatusCode res r.code
   void $ writeString writable UTF8 (unsafeStringify r.body) $ pure unit
