@@ -6,7 +6,7 @@ import Control.Monad.Aff (Aff, attempt)
 import Conveyor.Argument (Body(..), Context(..), RawData(..))
 import Conveyor.Batch (Batch(..), BatchParams, batchResponder)
 import Conveyor.Internal (LProxy(..), decodeBody, get, rowToList)
-import Conveyor.Respondable (class Respondable, Responder, conveyorError, fromError, toResponder)
+import Conveyor.Respondable (class RespondableError, Responder, conveyorError, fromError, toResponder)
 import Data.Either (Either(..))
 import Data.Foreign (MultipleErrors)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
@@ -28,7 +28,7 @@ class ServableList c e (l :: RowList) (r :: # Type) | l -> r where
 
 
 
-instance servableAff :: Respondable r => Servable c e (Aff e r) where
+instance servableAff :: (RespondableError r) => Servable c e (Aff e r) where
   serve aff _ (RawData rd) =
     case requestMethod rd.req of
       "POST" -> do

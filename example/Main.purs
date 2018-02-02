@@ -11,7 +11,7 @@ import Control.Monad.Except (throwError)
 import Conveyor (handlerWithContext)
 import Conveyor.Argument (Body(..), Context(..), RawData(..))
 import Conveyor.Batch (Batch(..))
-import Conveyor.Respondable (class Respondable, Responder(..))
+import Conveyor.Respondable (class Respondable, class RespondableError, Responder(..))
 import Data.Int (fromString)
 import Data.Maybe (Maybe(..))
 import Node.HTTP (HTTP, ListenOptions, createServer, listen)
@@ -45,6 +45,8 @@ instance respondableResult :: WriteForeign r => Respondable (Result r) where
       , code: f.status
       , body: write { messages: [ f.message ] }
       }
+
+instance respondableErrorResult :: WriteForeign r => RespondableError (Result r) where
   fromError _ = Failure { status: 500, message: "Internal server error ;)" }
 
 

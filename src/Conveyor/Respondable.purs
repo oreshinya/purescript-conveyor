@@ -23,6 +23,10 @@ newtype Responder = Responder
 
 class Respondable r where
   toResponder :: r -> Responder
+
+
+
+class Respondable r <= RespondableError r where
   fromError :: Error -> r
 
 
