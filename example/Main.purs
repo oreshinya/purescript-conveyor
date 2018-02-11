@@ -7,10 +7,12 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
 import Control.Monad.Eff.Exception (error)
+import Control.Monad.Eff.Now (NOW)
 import Control.Monad.Except (throwError)
 import Conveyor (handlerWithContext)
 import Conveyor.Argument (Body(..), Context(..), RawData(..))
 import Conveyor.Batch (Batch(..))
+import Conveyor.Logger (withLogger)
 import Conveyor.Respondable (class Respondable, class RespondableError, Responder(..))
 import Data.Int (fromString)
 import Data.Maybe (Maybe(..))
@@ -106,8 +108,8 @@ createBlog (Body b) = pure $ Success
 
 
 
-main :: forall e. Eff (process :: PROCESS, console :: CONSOLE, http :: HTTP | e) Unit
+main :: forall e. Eff (now :: NOW, process :: PROCESS, console :: CONSOLE, http :: HTTP | e) Unit
 main = do
   config <- getConfig
-  server <- createServer $ handlerWithContext 777 $ Batch { contextTest, errorTest, rawDataTest, createBlog }
+  server <- createServer $ handlerWithContext 777 $ withLogger $ Batch { contextTest, errorTest, rawDataTest, createBlog }
   listen server config $ pure unit

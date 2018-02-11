@@ -6,6 +6,7 @@ import Control.Monad.Aff (Aff, attempt)
 import Conveyor.Argument (Body(..), Context(..), RawData(..))
 import Conveyor.Batch (Batch(..), BatchParams, batchResponder)
 import Conveyor.Internal (LProxy(..), decodeBody, get, rowToList)
+import Conveyor.Logger (LogInfo(..), Logger(..))
 import Conveyor.Respondable (class RespondableError, Responder, conveyorError, fromError, toResponder)
 import Data.Either (Either(..))
 import Data.Foreign (MultipleErrors)
@@ -79,6 +80,15 @@ instance servableBatch :: Servable c e s => Servable c e (Batch s) where
             Left _ -> pure $ conveyorError 400 "Invalid batch request"
             Right bodies -> map batchResponder $ traverse onIterate bodies
         else serve servable ctx rawData
+
+
+
+instance servableLogger :: Servable c e s => Servable c e (Logger e s) where
+  serve (Logger logger servable) ctx rawData = do
+    logger rawData Start
+    responder <- serve servable ctx rawData
+    logger rawData $ End responder
+    pure responder
 
 
 
