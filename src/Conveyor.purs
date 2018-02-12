@@ -8,7 +8,6 @@ import Prelude
 import Control.Monad.Aff (runAff_)
 import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Exception (message)
 import Control.Monad.Eff.Ref (newRef, readRef, writeRef)
 import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
 import Conveyor.Argument (RawData(..))
@@ -45,7 +44,7 @@ handlerWithContext ctx servable = \req res ->
       callback (Right suc) = send res suc
 
       onDataString' ref chunk = readRef ref >>= writeRef ref <<< flip append chunk
-      onError' err = send res $ conveyorError 500 $ message err
+      onError' err = send res $ conveyorError 500 "Internal Server Error"
       onEnd' ref = do
         rawBody <- readRef ref
         runAff_ callback $ unsafeCoerceAff $ serve servable ctx $ RawData { req, res, path, rawBody }
