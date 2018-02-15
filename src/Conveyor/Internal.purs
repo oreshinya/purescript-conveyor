@@ -69,4 +69,4 @@ parseMediaType = split (Pattern ";") >>> head >>> map MediaType
 
 
 logError :: forall e. Error -> Eff e Unit
-logError err = unsafeCoerceEff $ log $ show $ fromMaybe (message err) $ stack err
+logError err = unsafeCoerceEff $ log $ fromMaybe (message err) $ stack err
