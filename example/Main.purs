@@ -96,7 +96,7 @@ contextTest (Context i) =
 errorTest :: forall e. Aff (console :: CONSOLE | e) (Result YourJson)
 errorTest = do
   liftEff $ log "foo"
-  throwError $ error ""
+  throwError $ error "This is test error!!!"
 
 
 

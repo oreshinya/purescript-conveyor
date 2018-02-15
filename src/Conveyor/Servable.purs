@@ -3,9 +3,10 @@ module Conveyor.Servable where
 import Prelude
 
 import Control.Monad.Aff (Aff, attempt)
+import Control.Monad.Eff.Class (liftEff)
 import Conveyor.Argument (Body(..), Context(..), RawData(..))
 import Conveyor.Batch (Batch(..), BatchParams, batchResponder)
-import Conveyor.Internal (LProxy(..), decodeBody, get, rowToList)
+import Conveyor.Internal (LProxy(..), decodeBody, get, logError, rowToList)
 import Conveyor.Logger (LogInfo(..), Logger(..))
 import Conveyor.Respondable (class RespondableError, Responder, conveyorError, fromError, toResponder)
 import Data.Either (Either(..))
@@ -34,9 +35,12 @@ instance servableAff :: (RespondableError r) => Servable c e (Aff e r) where
     case requestMethod rd.req of
       "POST" -> do
          result <- attempt aff
-         pure <<< toResponder $ case result of
-           Left err -> fromError err
-           Right suc -> suc
+         case result of
+           Left err -> do
+             liftEff $ logError err
+             pure $ toResponder $ (fromError err :: r)
+           Right suc ->
+             pure $ toResponder suc
       _ -> pure $ conveyorError 400 "HTTP Method is not POST"
 
 

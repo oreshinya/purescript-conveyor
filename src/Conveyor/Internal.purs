@@ -3,21 +3,26 @@ module Conveyor.Internal
   , get
   , rowToList
   , decodeBody
+  , logError
   ) where
 
 import Prelude
 
+import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Exception (Error, message, stack)
+import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
 import Data.Array (head)
 import Data.Either (Either(..))
 import Data.Foreign (ForeignError(..), MultipleErrors)
 import Data.List.NonEmpty (singleton)
-import Data.Maybe (Maybe(..), fromMaybe')
+import Data.Maybe (Maybe(..), fromMaybe, fromMaybe')
 import Data.MediaType (MediaType(..))
 import Data.MediaType.Common (applicationJSON)
 import Data.StrMap (lookup)
 import Data.String (Pattern(..), split)
 import Data.Symbol (class IsSymbol, SProxy, reflectSymbol)
 import Node.HTTP (Request, requestHeaders)
+import Node.Stdout (log)
 import Partial.Unsafe (unsafeCrashWith)
 import Simple.JSON (class ReadForeign, readJSON)
 import Type.Row (class RowToList, kind RowList)
@@ -60,3 +65,8 @@ decodeBody req rawBody =
 
 parseMediaType :: String -> Maybe MediaType
 parseMediaType = split (Pattern ";") >>> head >>> map MediaType
+
+
+
+logError :: forall e. Error -> Eff e Unit
+logError err = unsafeCoerceEff $ log $ show $ fromMaybe (message err) $ stack err
