@@ -4,7 +4,8 @@ import Prelude
 
 import Control.Monad.Aff (Aff, attempt)
 import Control.Monad.Eff.Class (liftEff)
-import Conveyor.Argument (Body(..), Context(..), RawData(..))
+import Conveyor.Argument (Body(..), Context, RawData(..))
+import Conveyor.Authenticatable (class Authenticatable, authenticate, Auth(..))
 import Conveyor.Batch (Batch(..), BatchParams, batchResponder)
 import Conveyor.Internal (LProxy(..), decodeBody, get, logError, rowToList)
 import Conveyor.Logger (LogInfo(..), Logger(..))
@@ -21,12 +22,12 @@ import Unsafe.Coerce (unsafeCoerce)
 
 
 class Servable c e s | s -> e where
-  serve :: s -> c -> RawData -> Aff e Responder
+  serve :: s -> Context c -> RawData -> Aff e Responder
 
 
 
 class ServableList c e (l :: RowList) (r :: # Type) | l -> r where
-  serveList :: LProxy l -> Record r -> c -> RawData -> Aff e Responder
+  serveList :: LProxy l -> Record r -> Context c -> RawData -> Aff e Responder
 
 
 
@@ -54,12 +55,21 @@ instance servableWithBody :: (ReadForeign b, Servable c e s) => Servable c e (Bo
 
 
 instance servableWithContext :: Servable c e s => Servable c e (Context c -> s) where
-  serve servable ctx = serve (servable $ Context ctx) ctx
+  serve servable ctx = serve (servable ctx) ctx
 
 
 
 instance servableWithRawData :: Servable c e s => Servable c e (RawData -> s) where
   serve servable ctx rawData = serve (servable rawData) ctx rawData
+
+
+
+instance servableWithAuth :: (Servable c e s, Authenticatable c e r a) => Servable c e (Auth a -> s) where
+  serve servable ctx rawData = do
+    result <- authenticate ctx rawData
+    case result of
+      Left r -> pure $ toResponder (r :: r)
+      Right x -> serve (servable $ Auth x) ctx rawData
 
 
 
