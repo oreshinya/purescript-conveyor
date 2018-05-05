@@ -2,9 +2,8 @@
   "private": true,
   "name": "purescript-conveyor",
   "scripts": {
+    "postinstall": "bower install",
     "clean": "rm -rf output",
-    "bower:install": "bower install",
-    "pulp:login": "pulp login",
     "pulp:build": "pulp build --include example",
     "pulp:version": "pulp version",
     "pulp:publish": "pulp publish",
