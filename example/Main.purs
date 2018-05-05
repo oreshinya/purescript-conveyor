@@ -2,18 +2,17 @@ module Main where
 
 import Prelude
 
-import Control.Monad.Aff (Aff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Eff.Now (NOW)
 import Control.Monad.Except (throwError)
-import Conveyor (handlerWithContext)
-import Conveyor.Argument (Body(..), Context(..), RawData(..))
-import Conveyor.Batch (Batch(..))
+import Conveyor (handlerWithExtraData)
+import Conveyor.Handler (Handler, askExtra, askRaw)
 import Conveyor.Logger (withLogger)
-import Conveyor.Respondable (class Respondable, class RespondableError, Responder(..))
+import Conveyor.Respondable (class Respondable, class RespondableError)
+import Conveyor.Types (Body(..), Batch(..), Responder(..))
 import Data.Int (fromString)
 import Data.Maybe (Maybe(..))
 import Node.HTTP (HTTP, ListenOptions, createServer, listen)
@@ -53,12 +52,12 @@ instance respondableErrorResult :: WriteForeign r => RespondableError (Result r)
 
 
 
-getHostname :: forall e. Eff e String
+getHostname :: forall eff. Eff eff String
 getHostname = pure "0.0.0.0"
 
 
 
-getPort :: forall e. Eff (process :: PROCESS | e) Int
+getPort :: forall eff. Eff (process :: PROCESS | eff) Int
 getPort = do
   portStr <- lookupEnv "PORT"
   pure $ case (map fromString portStr) of
@@ -67,12 +66,12 @@ getPort = do
 
 
 
-getBacklog :: forall e. Eff e (Maybe Int)
+getBacklog :: forall eff. Eff eff (Maybe Int)
 getBacklog = pure Nothing
 
 
 
-getConfig :: forall e. Eff (process :: PROCESS | e) ListenOptions
+getConfig :: forall eff. Eff (process :: PROCESS | eff) ListenOptions
 getConfig = do
   hostname <- getHostname
   port <- getPort
@@ -81,26 +80,19 @@ getConfig = do
 
 
 
-rawDataTest :: forall e. RawData -> Aff e (Result YourJson)
-rawDataTest (RawData rd) =
-  pure $ Success { status: 200, body: { yours: rd.rawBody } }
-
-
-
-contextTest :: forall e. Context Int -> Aff e (Result YourJson)
-contextTest (Context i) =
-  pure $ Success { status: 200, body: { yours: show i } }
-
-
-
-errorTest :: forall e. Aff (console :: CONSOLE | e) (Result YourJson)
+errorTest :: forall eff. Handler Int (console :: CONSOLE | eff) (Result YourJson)
 errorTest = do
   liftEff $ log "foo"
+  extra <- askExtra
+  liftEff $ log $ show extra
+  raw <- askRaw
+  liftEff $ log raw.path
+  liftEff $ log raw.rawBody
   throwError $ error "This is test error!!!"
 
 
 
-createBlog :: forall e. Body Blog -> Aff e (Result MyJson)
+createBlog :: forall eff. Body Blog -> Handler Int eff (Result MyJson)
 createBlog (Body b) = pure $ Success
   { status: 200
   , body: { fuck: "title: " <> b.title <> ", content: " <> b.content <> " requested." }
@@ -108,8 +100,8 @@ createBlog (Body b) = pure $ Success
 
 
 
-main :: forall e. Eff (now :: NOW, process :: PROCESS, console :: CONSOLE, http :: HTTP | e) Unit
+main :: forall eff. Eff (now :: NOW, process :: PROCESS, console :: CONSOLE, http :: HTTP | eff) Unit
 main = do
   config <- getConfig
-  server <- createServer $ handlerWithContext 777 $ withLogger $ Batch { contextTest, errorTest, rawDataTest, createBlog }
+  server <- createServer $ handlerWithExtraData 777 $ withLogger $ Batch { errorTest, createBlog }
   listen server config $ pure unit
