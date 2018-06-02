@@ -24,14 +24,14 @@
     "output"
   ],
   "dependencies": {
-    "purescript-media-types": "^3.0.0",
-    "purescript-node-http": "^4.1.0",
-    "purescript-aff": "^4.0.2",
-    "purescript-simple-json": "^2.0.1",
-    "purescript-stdout": "^0.2.0",
-    "purescript-now": "^3.0.0"
+    "purescript-media-types": "^4.0.0",
+    "purescript-node-http": "^5.0.0",
+    "purescript-aff": "^5.0.0",
+    "purescript-simple-json": "^4.0.0",
+    "purescript-stdout": "^1.0.0",
+    "purescript-js-date": "^6.0.0"
   },
   "devDependencies": {
-    "purescript-node-process": "^5.0.0"
+    "purescript-node-process": "^6.0.0"
   }
 }

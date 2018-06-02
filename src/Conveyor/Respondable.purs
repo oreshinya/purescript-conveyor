@@ -1,7 +1,7 @@
 module Conveyor.Respondable where
 
-import Control.Monad.Eff.Exception (Error)
 import Conveyor.Types (Responder)
+import Effect.Exception (Error)
 
 
 

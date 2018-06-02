@@ -2,8 +2,8 @@ module Conveyor.Types where
 
 import Prelude
 
-import Control.Monad.Aff (Aff)
-import Data.Foreign (Foreign)
+import Effect.Aff (Aff)
+import Foreign (Foreign)
 import Node.HTTP (Request, Response)
 
 
@@ -31,8 +31,8 @@ data LogInfo
 
 
 
-data Logger eff server =
-  Logger (RawData -> LogInfo -> Aff eff Unit) server
+data Logger server =
+  Logger (RawData -> LogInfo -> Aff Unit) server
 
 
 

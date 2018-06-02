@@ -2,11 +2,10 @@ module Main where
 
 import Prelude
 
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Console (CONSOLE, log)
-import Control.Monad.Eff.Exception (error)
-import Control.Monad.Eff.Now (NOW)
+import Effect (Effect)
+import Effect.Class (liftEffect)
+import Effect.Console (log)
+import Effect.Exception (error)
 import Control.Monad.Except (throwError)
 import Conveyor (handlerWithExtraData)
 import Conveyor.Handler (Handler, askExtra, askRaw)
@@ -15,8 +14,8 @@ import Conveyor.Respondable (class Respondable, class RespondableError)
 import Conveyor.Types (Body(..), Batch(..), Responder(..))
 import Data.Int (fromString)
 import Data.Maybe (Maybe(..))
-import Node.HTTP (HTTP, ListenOptions, createServer, listen)
-import Node.Process (PROCESS, lookupEnv)
+import Node.HTTP (ListenOptions, createServer, listen)
+import Node.Process (lookupEnv)
 import Simple.JSON (class WriteForeign, write)
 
 
@@ -52,12 +51,12 @@ instance respondableErrorResult :: WriteForeign r => RespondableError (Result r)
 
 
 
-getHostname :: forall eff. Eff eff String
+getHostname :: Effect String
 getHostname = pure "0.0.0.0"
 
 
 
-getPort :: forall eff. Eff (process :: PROCESS | eff) Int
+getPort :: Effect Int
 getPort = do
   portStr <- lookupEnv "PORT"
   pure $ case (map fromString portStr) of
@@ -66,12 +65,12 @@ getPort = do
 
 
 
-getBacklog :: forall eff. Eff eff (Maybe Int)
+getBacklog :: Effect (Maybe Int)
 getBacklog = pure Nothing
 
 
 
-getConfig :: forall eff. Eff (process :: PROCESS | eff) ListenOptions
+getConfig :: Effect ListenOptions
 getConfig = do
   hostname <- getHostname
   port <- getPort
@@ -80,19 +79,19 @@ getConfig = do
 
 
 
-errorTest :: forall eff. Handler Int (console :: CONSOLE | eff) (Result YourJson)
+errorTest :: Handler Int (Result YourJson)
 errorTest = do
-  liftEff $ log "foo"
+  liftEffect $ log "foo"
   extra <- askExtra
-  liftEff $ log $ show extra
+  liftEffect $ log $ show extra
   raw <- askRaw
-  liftEff $ log raw.path
-  liftEff $ log raw.rawBody
+  liftEffect $ log raw.path
+  liftEffect $ log raw.rawBody
   throwError $ error "This is test error!!!"
 
 
 
-createBlog :: forall eff. Body Blog -> Handler Int eff (Result MyJson)
+createBlog :: Body Blog -> Handler Int (Result MyJson)
 createBlog (Body b) = pure $ Success
   { status: 200
   , body: { fuck: "title: " <> b.title <> ", content: " <> b.content <> " requested." }
@@ -100,7 +99,7 @@ createBlog (Body b) = pure $ Success
 
 
 
-main :: forall eff. Eff (now :: NOW, process :: PROCESS, console :: CONSOLE, http :: HTTP | eff) Unit
+main :: Effect Unit
 main = do
   config <- getConfig
   server <- createServer $ handlerWithExtraData 777 $ withLogger $ Batch { errorTest, createBlog }

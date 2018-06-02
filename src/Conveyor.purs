@@ -5,36 +5,34 @@ module Conveyor
 
 import Prelude
 
-import Control.Monad.Aff (runAff_)
-import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Ref (newRef, readRef, writeRef)
-import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
 import Conveyor.Internal (conveyorError, logError, send)
 import Conveyor.Servable (class Servable, serve)
 import Data.Either (Either(..))
 import Data.String (drop)
+import Effect (Effect)
+import Effect.Aff (runAff_)
+import Effect.Ref (new, read, modify_)
 import Node.Encoding (Encoding(..))
-import Node.HTTP (HTTP, Request, Response, requestAsStream, requestURL)
+import Node.HTTP (Request, Response, requestAsStream, requestURL)
 import Node.Stream (onDataString, onEnd, onError)
 
 
 
 handler
-  :: forall eff server
-   . Servable Unit (http :: HTTP | eff) server
+  :: forall server
+   . Servable Unit server
   => server
-  -> (Request -> Response -> Eff (http :: HTTP | eff) Unit)
+  -> (Request -> Response -> Effect Unit)
 handler = handlerWithExtraData unit
 
 
 
 handlerWithExtraData
-  :: forall ex eff server
-   . Servable ex (http :: HTTP | eff) server
+  :: forall ex server
+   . Servable ex server
   => ex
   -> server
-  -> (Request -> Response -> Eff (http :: HTTP | eff) Unit)
+  -> (Request -> Response -> Effect Unit)
 handlerWithExtraData extraData server = \req res ->
   let path = drop 1 $ requestURL req
       readable = requestAsStream req
@@ -42,16 +40,16 @@ handlerWithExtraData extraData server = \req res ->
       callback (Left err) = onError' err
       callback (Right suc) = send res suc
 
-      onDataString' ref chunk = readRef ref >>= writeRef ref <<< flip append chunk
+      onDataString' ref chunk = modify_ (flip append chunk) ref
       onError' err = do
         logError err
         send res $ conveyorError 500 "Internal Server Error"
       onEnd' ref = do
-        rawBody <- readRef ref
-        runAff_ callback $ unsafeCoerceAff $ serve server extraData { req, res, path, rawBody }
+        rawBody <- read ref
+        runAff_ callback $ serve server extraData { req, res, path, rawBody }
 
-   in unsafeCoerceEff do
-      ref <- newRef ""
+   in do
+      ref <- new ""
       onDataString readable UTF8 $ onDataString' ref
       onError readable onError'
       onEnd readable $ onEnd' ref

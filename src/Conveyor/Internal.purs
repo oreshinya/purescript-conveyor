@@ -12,26 +12,26 @@ module Conveyor.Internal
 
 import Prelude
 
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Exception (Error, message, stack)
-import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
 import Conveyor.Types (Responder(..))
 import Data.Array (head)
 import Data.Either (Either(..))
-import Data.Foreign (Foreign, ForeignError(..), MultipleErrors, toForeign)
 import Data.List.NonEmpty (singleton)
 import Data.Maybe (Maybe(..), fromMaybe, fromMaybe')
 import Data.MediaType (MediaType(..))
 import Data.MediaType.Common (applicationJSON)
-import Data.StrMap (lookup)
 import Data.String (Pattern(..), split)
 import Data.Symbol (class IsSymbol, SProxy, reflectSymbol)
+import Effect (Effect)
+import Effect.Exception (Error, message, stack)
+import Foreign (Foreign, ForeignError(..), MultipleErrors, unsafeToForeign)
+import Foreign.Object (lookup)
 import Global.Unsafe (unsafeStringify)
 import Node.Encoding (Encoding(..))
-import Node.HTTP (HTTP, Request, Response, requestHeaders, responseAsStream, setHeader, setStatusCode)
+import Node.HTTP (Request, Response, requestHeaders, responseAsStream, setHeader, setStatusCode)
 import Node.Stdout (log)
 import Node.Stream (end, writeString)
 import Partial.Unsafe (unsafeCrashWith)
+import Prim.Row (class Cons)
 import Simple.JSON (class ReadForeign, readJSON)
 import Type.Row (class RowToList, kind RowList)
 import Unsafe.Coerce (unsafeCoerce)
@@ -53,7 +53,7 @@ data LProxy (l :: RowList) = LProxy
 get
   :: forall l a r1 r2
    . IsSymbol l
-  => RowCons l a r1 r2
+  => Cons l a r1 r2
   => SProxy l
   -> Record r2
   -> a
@@ -84,8 +84,8 @@ parseMediaType = split (Pattern ";") >>> head >>> map MediaType
 
 
 
-logError :: forall eff. Error -> Eff eff Unit
-logError err = unsafeCoerceEff $ log $ fromMaybe (message err) $ stack err
+logError :: Error -> Effect Unit
+logError err = log $ fromMaybe (message err) $ stack err
 
 
 
@@ -94,7 +94,7 @@ conveyorError code message =
   Responder
     { contentType: "application/json; charset=utf-8"
     , code
-    , body: toForeign { message }
+    , body: unsafeToForeign { message }
     }
 
 
@@ -104,16 +104,15 @@ batchResponder rs =
   Responder
     { contentType: "application/json; charset=utf-8"
     , code: 200
-    , body: toForeign rs
+    , body: unsafeToForeign rs
     }
 
 
 
 send
-  :: forall eff
-   . Response
+  :: Response
   -> Responder
-  -> Eff (http :: HTTP | eff) Unit
+  -> Effect Unit
 send res (Responder r) = do
   setHeader res "Content-Type" r.contentType
   setStatusCode res r.code
