@@ -2,6 +2,7 @@ module Conveyor.Servable where
 
 import Prelude
 
+import Conveyor.AuthHandler (class Authenticatable, AuthContenxt(..), AuthHandler, authenticate, runAuthHandler)
 import Conveyor.Handler (Context(..), Handler, runHandler)
 import Conveyor.Internal (BatchParams, LProxy(..), batchResponder, conveyorError, decodeBody, get, logError, rowToList)
 import Conveyor.Respondable (class RespondableError, fromError, toResponder)
@@ -48,6 +49,20 @@ instance servableAff :: (RespondableError r) => Servable ex (Aff r) where
 instance servableHandler :: (RespondableError r) => Servable ex (Handler ex r) where
   serve handler extraData rawData =
     serve (runHandler handler $ Context { extraData, rawData }) extraData rawData
+
+
+
+instance servableAuthHandler :: (RespondableError r, Authenticatable ex a) => Servable ex (AuthHandler a ex r) where
+  serve handler extraData rawData = do
+    result <- attempt $ authenticate extraData rawData
+    case result of
+      Left err -> do
+        liftEffect $ logError err
+        pure $ toResponder $ (fromError err :: r)
+      Right authTarget ->
+        serve
+          (runAuthHandler handler $ AuthContenxt { authTarget, extraData, rawData })
+          extraData rawData
 
 
 
